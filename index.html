@@ -188,6 +188,14 @@ body.exhibit .tag{font-size:15px}
 .ci-top{display:flex;flex-wrap:wrap;gap:6px}
 .ci-type{font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--ink);color:var(--panel)}
 .ci-tag{font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--point-soft);color:var(--point)}
+.m-hbtns{display:flex;gap:6px}.m-hbtns .btn{height:34px;padding:0 12px;font-size:13px}
+.pw-scrim{z-index:12}
+.pw-modal{width:min(340px,100%);padding:22px;gap:10px;display:flex;flex-direction:column}
+.pw-modal h2{margin:0 0 4px;font-size:18px;font-weight:800}
+.pw-modal .fld[hidden]{display:none}
+.pw-msg{min-height:18px;font-size:13px;font-weight:700;color:var(--danger)}
+.pw-row{display:flex;gap:8px;justify-content:flex-end}.pw-row .launch{height:44px;padding:0 26px;font-size:16px}.pw-row .btn{height:44px}
+.shake{animation:shake .35s}@keyframes shake{20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
 .tag.dot{padding:0;width:12px;height:12px;gap:0;border:2px solid rgba(255,255,255,.9);background:var(--c,var(--point));backdrop-filter:none}
 .tag.dot i,.tag.dot span{display:none}
 .del.edit{color:var(--ink)}
@@ -374,6 +382,15 @@ body.exhibit .tag{font-size:15px}
   <div class="w-stats" id="wStats"></div>
   <div class="w-grid" id="wGrid"></div>
 </div>
+<div class="scrim pw-scrim" id="pwScrim" hidden>
+  <div class="modal pw-modal" id="pwModal" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
+    <h2 id="pwTitle">관리 잠금</h2>
+    <label class="fld"><span>비밀번호</span><input id="pw1" type="password" autocomplete="off" maxlength="32"></label>
+    <label class="fld"><span>비밀번호 확인</span><input id="pw2" type="password" autocomplete="off" maxlength="32" placeholder="한 번 더 입력"></label>
+    <div class="pw-msg" id="pwMsg"></div>
+    <div class="pw-row"><button class="btn" id="pwCancel">취소</button><button class="launch" id="pwOk">확인</button></div>
+  </div>
+</div>
 <div class="cert-wrap" id="cert" hidden>
   <div class="cert" id="certCard">
     <div class="c-top"><span class="c-k" id="cKind">궤도 진입 증명서</span><span class="c-no" id="cNo"></span></div>
@@ -385,7 +402,7 @@ body.exhibit .tag{font-size:15px}
 </div>
 <div class="scrim" id="scrim" hidden>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
-    <div class="m-head"><h2 id="mTitle">브랜드 관리</h2><button class="btn" id="closeBtn">닫기</button></div>
+    <div class="m-head"><h2 id="mTitle">브랜드 관리</h2><div class="m-hbtns"><button class="btn" id="lockBtn">잠금</button><button class="btn" id="closeBtn">닫기</button></div></div>
     <ul class="list" id="list"></ul>
     <div class="m-sync"><span id="syncState">보드 연동 확인 중</span><button class="btn" id="syncBtn">지금 확인</button><button class="btn" id="autoBtn">보드 자동 발사 켬</button></div>
     <div class="m-tools"><button class="btn" id="expJson">백업 저장</button><button class="btn" id="expCsv">목록 저장</button><button class="btn" id="impBtn">백업 불러오기</button><button class="btn" id="seedBtn">2030 보드 불러오기</button></div>
@@ -483,9 +500,12 @@ const earthMat=new THREE.ShaderMaterial({uniforms:earthU,
     vec2 ruv=(vec2(vUv.x*360.0-180.0,vUv.y*180.0-90.0)-vec2(121.0,30.0))/14.0;
     vec2 re=smoothstep(vec2(0.0),vec2(0.07),ruv)*smoothstep(vec2(0.0),vec2(0.07),1.0-ruv);
     day=mix(day,texture2D(regionMap,clamp(ruv,0.0,1.0)).rgb,re.x*re.y);
-    day=pow(day,vec3(0.92))*1.5;
     vec3 night=texture2D(nightMap,vUv).rgb;night=pow(night,vec3(1.3))*vec3(1.25,0.95,0.6)*1.9;
     float land=texture2D(maskMap,vUv).r;
+    float lm=smoothstep(0.25,0.75,land);float lum=dot(day,vec3(0.3,0.59,0.11));
+    vec3 ocean=mix(vec3(0.014,0.06,0.14),vec3(0.035,0.14,0.26),smoothstep(0.03,0.2,lum));
+    float wb=smoothstep(0.0,0.06,day.b-day.r);day=mix(mix(day,ocean,0.82*wb),day,lm);
+    day=pow(day,vec3(0.95))*1.32;
     vec3 sT=sunDir-n*ndl;float sl=length(sT);vec2 suv=vec2(0.0);
     if(ndl>0.0&&sl>1e-4){vec3 sh=sT/sl;vec3 e=normalize(vE);vec3 no=cross(n,e);float tz=min(sl/max(ndl,0.12),2.5);float dd=0.0016*tz;
       float cl0=max(cos((vUv.y-0.5)*3.14159),0.15);suv=vec2(dot(sh,e)*dd/(6.28318*cl0),dot(sh,no)*dd/3.14159);}
@@ -496,10 +516,10 @@ const earthMat=new THREE.ShaderMaterial({uniforms:earthU,
     float light=clamp(ndl*1.1+0.06,0.0,1.0);
     float cls=texture2D(cloudMap,vUv+vec2(cloudShift,0.0)+suv*1.7).r;vec3 col=day*light*(1.0-smoothstep(0.2,0.9,mix(cl,cls,0.5))*0.38);
     vec3 h=normalize(sunDir+v);
-    float sp=pow(max(dot(n,h),0.0),60.0)*(1.0-land)*0.75*smoothstep(0.0,0.25,ndl);
+    float sp=pow(max(dot(n,h),0.0),22.0)*(1.0-lm)*0.3*smoothstep(0.0,0.25,ndl);
     col+=vec3(1.0,0.92,0.8)*sp;
     col=mix(night*(1.0-smoothstep(0.15,0.8,cl)*0.75),col,dayK);
-    float hz=pow(1.0-max(dot(n,v),0.0),1.7);col=mix(col,vec3(0.40,0.60,0.95)*(0.12+light),hz*0.38*dayK);
+    float hz=pow(1.0-max(dot(n,v),0.0),1.7);col=mix(col,vec3(0.40,0.60,0.95)*(0.12+light),hz*0.5*dayK);
     float fr=pow(1.0-max(dot(n,v),0.0),3.0);
     vec3 atm=mix(vec3(1.0,0.45,0.18),vec3(0.32,0.6,1.0),smoothstep(-0.05,0.35,ndl));
     col+=atm*fr*smoothstep(-0.25,0.5,ndl)*1.1;
@@ -1086,7 +1106,7 @@ function renderList(){listEl.innerHTML='';{const ub0=document.getElementById('un
       li.append(i1,i2,ok);i1.focus()};
     li.append(nm,tm,ed,del);listEl.appendChild(li)});
   const ub=document.getElementById('undoBtn');if(ub)ub.hidden=!getTrash().length}
-$('manageBtn').onclick=()=>{confirmEl.hidden=true;renderList();scrim.hidden=false};
+
 $('closeBtn').onclick=()=>scrim.hidden=true;
 scrim.addEventListener('click',e=>{if(e.target===scrim)scrim.hidden=true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){scrim.hidden=true;$('dock').classList.add('collapsed')}});
@@ -1384,7 +1404,7 @@ function openCert(b){
   {const tags=(b.info&&b.info.values||[]).map(v=>'#'+v).join(' ');const ol=[b.org,tags].filter(Boolean).join(' · ');$('cOrg').textContent=ol;$('cOrg').style.display=ol?'':'none'}
   $('cGrid').innerHTML=gridHTML(b,true);
   const bar=$('cBar');bar.classList.remove('run');void bar.offsetWidth;bar.classList.add('run');
-  $('cert').hidden=false;clearTimeout(certT);certT=setTimeout(closeCert,b.test?2500:12000);
+  $('cert').hidden=false;clearTimeout(certT);certT=setTimeout(closeCert,b.test?2500:(queue.length?5000:12000));
 }
 function closeCert(){if(!certOpen)return;certOpen=false;clearTimeout(certT);$('cert').hidden=true;lastInteract=performance.now();if(!active)setTimeout(nextLaunch,300)}
 $('certClose').onclick=closeCert;
@@ -1578,7 +1598,7 @@ function seedBoard(){let n=0,no=brands.reduce((m,x)=>Math.max(m,x.no||0),0);cons
 $('seedBtn').onclick=()=>{const n=seedBoard();renderList();toast(n?n+'개 추가 완료':'모두 궤도 위에 있음')};
 
 /* ================= JGL board live sync (works when the page is not sandboxed: jgl.kr, other hosts, or opened as a file) ================= */
-const JGL={SB:'https://nkwadxbdecbgbtnqnkyx.supabase.co',KEY:'sb_publishable_eeWomLZhUH2JUO54WSehvA_OGwcvdet',BOARD:'2030',POLL:15000};
+const JGL={SB:'https://nkwadxbdecbgbtnqnkyx.supabase.co',KEY:'sb_publishable_eeWomLZhUH2JUO54WSehvA_OGwcvdet',BOARD:'2030',POLL:5000};
 const SYNC={ok:false,last:0,count:0,err:'',auto:true,started:false,timer:0};
 try{SYNC.auto=localStorage.getItem('brand-orbit-autolaunch')!=='0'}catch(e){}
 function jglHeaders(){const h={apikey:JGL.KEY};if(JGL.KEY.indexOf('eyJ')===0)h.Authorization='Bearer '+JGL.KEY;return h}
@@ -1588,7 +1608,11 @@ function htmlToText(s){s=String(s||'');if(!/[<&]/.test(s))return s;
 const VALMAP=[[/협력|소통|공동체|함께|연대|나눔/,'comm'],[/탐구|도전|성장|질문|성취|탐험/,'sci'],[/창의|상상|표현|꿈|놀이|예술/,'eo'],[/배려|존중|공감|생태|환경|건강|마음|사회정서/,'wx'],[/AI|인공지능|디지털|데이터|코딩/i,'ai']];
 function kindFrom(values,text){for(const v of values){for(const [re,k] of VALMAP)if(re.test(v))return k}for(const [re,k] of VALMAP)if(re.test(text))return k;return 'eo'}
 function parsePost(p){
-  const raw=htmlToText((p.title?p.title+'\n':'')+(p.body||''));
+  const pick=v=>{if(v==null)return '';if(typeof v==='string'){const s=v.trim();if(/^[\[{]/.test(s)){try{return pick(JSON.parse(s))}catch(e){}}return v}
+    if(Array.isArray(v))return v.map(pick).join('\n');if(typeof v==='object')return ['title','text','html','content','body','value'].map(k=>pick(v[k])).filter(Boolean).join('\n');return ''};
+  const tl=['title','subject','heading','name'].map(k=>pick(p[k])).find(Boolean)||'';
+  const bd=['body','content','text','html','description','desc','memo','note'].map(k=>pick(p[k])).filter(Boolean).join('\n');
+  const raw=htmlToText((tl?tl+'\n':'')+bd);
   const lines=raw.split(/\r?\n/).map(s=>s.replace(/\u00a0/g,' ').trim()).filter(Boolean);
   let head=lines.find(l=>/[—–]|\s-\s/.test(l)&&!/^[·•\-*]\s*[^:：]{2,8}\s*[:：]/.test(l))||lines[0]||'';
   const hm=head.split(/\s*[—–]\s*|\s+-\s+/);const name=clean(hm[0]||'',20);const slogan=clean(hm.slice(1).join(' ')||'',30);
@@ -1606,7 +1630,7 @@ function parsePost(p){
   info.extra=extra;info.values=info.values||[];
   return {name,slogan,info,kind:kindFrom(info.values,raw),text:raw}}
 async function fetchBoard(){
-  const url=JGL.SB+'/rest/v1/posts?board=eq.'+encodeURIComponent(JGL.BOARD)+'&select=id,title,body,section,created_at&order=created_at.asc';
+  const url=JGL.SB+'/rest/v1/posts?board=eq.'+encodeURIComponent(JGL.BOARD)+'&select=*&order=created_at.asc';
   const r=await fetch(url,{headers:jglHeaders()});if(!r.ok)throw new Error('HTTP '+r.status);const rows=await r.json();if(!Array.isArray(rows))throw new Error('형식 오류');return rows}
 function applyInfo(b,pp){b.name=pp.name||b.name;b.slogan=pp.slogan;b.info=pp.info;b.model=pp.info.model||b.model||'';if(pp.info.org)b.org=clean(pp.info.org,16);b.kind=pp.kind}
 async function syncBoard(){
@@ -1631,15 +1655,53 @@ async function syncBoard(){
   for(const b of brands.filter(b=>/^post:/.test(b.id)&&!live.has(b.id))){if(active&&active.sat&&active.sat.b===b)continue;const s=sats.find(x=>x.b.id===b.id);if(s)removeSat(s);brands=brands.filter(y=>y!==b);removed++}
   for(let i=queue.length-1;i>=0;i--)if(queue[i].bid&&!live.has(queue[i].bid)){queue.splice(i,1);removed++}
   if(added||changed||removed){save();markNewest();refreshCount()}
-  if(launched){refreshQueue();refreshCount();toast('보드 새 교실 '+launched+'개 발사 대기');if(!active)nextLaunch()}
-  SYNC.started=true;renderSync()}
+  if(launched){refreshQueue();refreshCount();toast('보드 새 교실 '+launched+'개 발사');
+    stopTour(false);if(follow||ret){if(follow)setFull(follow.s,false);follow=null;ret=null;$('detail').hidden=true;markNewest()}
+    $('wall').hidden=true;closeLauncher();
+    if(certOpen){clearTimeout(certT);certT=setTimeout(closeCert,2500)}else if(!active)nextLaunch()}
+  SYNC.started=true;startRealtime();renderSync()}
+const RT={state:'off',client:null};
+function startRealtime(){if(RT.client||RT.loading||!SYNC.ok)return;RT.loading=true;const s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js';
+  s.onload=()=>{try{const sb=window.supabase.createClient(JGL.SB,JGL.KEY,{auth:{persistSession:false,autoRefreshToken:false}});RT.client=sb;
+    sb.channel('brandwall-'+JGL.BOARD).on('postgres_changes',{event:'*',schema:'public',table:'posts',filter:'board=eq.'+JGL.BOARD},()=>syncBoard())
+      .subscribe(st=>{RT.state=st==='SUBSCRIBED'?'on':'off';renderSync()})}catch(e){RT.state='off';renderSync()}};
+  s.onerror=()=>{RT.state='off';RT.loading=false};document.head.appendChild(s)}
 function renderSync(){const el=document.getElementById('syncState');if(!el)return;
   const p=n=>String(n).padStart(2,'0');const d=new Date(SYNC.last);
-  el.textContent=SYNC.ok?('보드 연동 · '+SYNC.count+'개 · '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())):('보드 연동 안 됨'+(SYNC.err?' · '+SYNC.err:''));
+  el.textContent=SYNC.ok?('보드 연동 · '+SYNC.count+'개 · '+(RT.state==='on'?'실시간':'5초마다 확인')+' · '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())):('보드 연동 안 됨'+(SYNC.err?' · '+SYNC.err:''));
   el.classList.toggle('off',!SYNC.ok);const ab=document.getElementById('autoBtn');if(ab){ab.textContent=SYNC.auto?'보드 자동 발사 켬':'보드 자동 발사 끔';ab.classList.toggle('on',SYNC.auto)}}
 function startSync(){syncBoard();clearInterval(SYNC.timer);SYNC.timer=setInterval(()=>{if(!document.hidden)syncBoard()},JGL.POLL)}
 document.getElementById('autoBtn').onclick=()=>{SYNC.auto=!SYNC.auto;try{localStorage.setItem('brand-orbit-autolaunch',SYNC.auto?'1':'0')}catch(e){}renderSync()};
 document.getElementById('syncBtn').onclick=()=>{toast('보드 확인 중');syncBoard()};
+
+/* ================= manage lock ================= */
+const PW_KEY='brand-orbit-pw';let pwUntil=0,pwFails=0,pwBlockUntil=0,pwMode='enter';
+const PW_FIXED=['s61c8e6b816b543c32f290936d8e99bfac5d612934fd3227075efd82b5cbe2ba1','fb9634fe'];const pwHas=()=>true;
+async function pwHash(s){const d='brandwall:'+s;
+  try{if(window.crypto&&crypto.subtle){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(d));return 's'+[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}}catch(e){}
+  let h=2166136261;for(const c of d){h^=c.codePointAt(0);h=Math.imul(h,16777619)>>>0}return 'f'+h.toString(16)}
+function openManageNow(){pwUntil=Date.now()+10*60*1000;confirmEl.hidden=true;renderList();scrim.hidden=false}
+function pwOpen(mode){pwMode=mode;const sc=$('pwScrim');$('pwTitle').textContent=mode==='set'?'관리 비밀번호 설정':mode==='change'?'관리 비밀번호 변경':'관리 잠금';
+  $('pw2').parentElement.hidden=mode==='enter';$('pw1').value='';$('pw2').value='';$('pwMsg').textContent='';$('pw1').placeholder=mode==='enter'?'비밀번호':'새 비밀번호 (4자 이상)';
+  sc.hidden=false;setTimeout(()=>$('pw1').focus(),60)}
+function pwClose(){$('pwScrim').hidden=true}
+function pwShake(msg){$('pwMsg').textContent=msg;const m=$('pwModal');m.classList.remove('shake');void m.offsetWidth;m.classList.add('shake')}
+async function pwSubmit(){const a=$('pw1').value,b=$('pw2').value;
+  if(pwMode==='enter'){if(Date.now()<pwBlockUntil){pwShake('잠시 후 다시 입력');return}
+    if(PW_FIXED.includes(await pwHash(a))){pwFails=0;pwClose();openManageNow()}
+    else{pwFails++;$('pw1').value='';if(pwFails>=5){pwBlockUntil=Date.now()+30000;pwFails=0;pwShake('30초 후 다시 입력')}else pwShake('비밀번호 불일치')}
+    return}
+  if(a.length<4){pwShake('4자 이상 입력');return}
+  if(a!==b){pwShake('두 비밀번호 불일치');return}
+  try{localStorage.setItem(PW_KEY,await pwHash(a))}catch(e){pwShake('저장 불가');return}
+  pwClose();toast(pwMode==='set'?'비밀번호 설정 완료':'비밀번호 변경 완료');if(pwMode==='set')openManageNow()}
+$('manageBtn').onclick=()=>{if(!pwHas()){pwOpen('set');return}if(Date.now()<pwUntil){openManageNow();return}pwOpen('enter')};
+$('pwOk').onclick=pwSubmit;$('pwCancel').onclick=pwClose;
+['pw1','pw2'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();if(id==='pw1'&&pwMode!=='enter'&&!$('pw2').value){$('pw2').focus();return}pwSubmit()}if(e.key==='Escape')pwClose()}));
+$('pwScrim').addEventListener('click',e=>{if(e.target===$('pwScrim'))pwClose()});
+$('lockBtn').onclick=()=>{pwUntil=0;scrim.hidden=true;toast('관리 잠금')};
+
 
 /* ================= safety helpers ================= */
 const BAD=['시발','씨발','씨팔','ㅅㅂ','병신','ㅂㅅ','지랄','좆','존나','개새끼','섹스','fuck','shit','bitch'];
