@@ -1599,7 +1599,7 @@ $('seedBtn').onclick=()=>{const n=seedBoard();renderList();toast(n?n+'개 추가
 
 /* ================= JGL board live sync (works when the page is not sandboxed: jgl.kr, other hosts, or opened as a file) ================= */
 const JGL={SB:'https://nkwadxbdecbgbtnqnkyx.supabase.co',KEY:'sb_publishable_eeWomLZhUH2JUO54WSehvA_OGwcvdet',BOARD:'2030',POLL:5000};
-const SYNC={ok:false,last:0,count:0,err:'',auto:true,started:false,timer:0};
+const SYNC={ok:false,last:0,count:0,err:'',auto:true,started:false,timer:0,busy:false};
 try{SYNC.auto=localStorage.getItem('brand-orbit-autolaunch')!=='0'}catch(e){}
 function jglHeaders(){const h={apikey:JGL.KEY};if(JGL.KEY.indexOf('eyJ')===0)h.Authorization='Bearer '+JGL.KEY;return h}
 function htmlToText(s){s=String(s||'');if(!/[<&]/.test(s))return s;
@@ -1631,14 +1631,16 @@ function parsePost(p){
   return {name,slogan,info,kind:kindFrom(info.values,raw),text:raw}}
 async function fetchBoard(){
   const url=JGL.SB+'/rest/v1/posts?board=eq.'+encodeURIComponent(JGL.BOARD)+'&select=*&order=created_at.asc';
-  const r=await fetch(url,{headers:jglHeaders()});if(!r.ok)throw new Error('HTTP '+r.status);const rows=await r.json();if(!Array.isArray(rows))throw new Error('형식 오류');return rows}
+  const r=await fetch(url,{headers:jglHeaders(),cache:'no-store'});if(!r.ok){const msg=await r.text().catch(()=>'');throw new Error('HTTP '+r.status+(msg?' · '+msg.slice(0,180):''))}const rows=await r.json();if(!Array.isArray(rows))throw new Error('형식 오류');return rows}
 function applyInfo(b,pp){b.name=pp.name||b.name;b.slogan=pp.slogan;b.info=pp.info;b.model=pp.info.model||b.model||'';if(pp.info.org)b.org=clean(pp.info.org,16);b.kind=pp.kind}
 async function syncBoard(){
-  let rows;try{rows=await fetchBoard()}catch(e){SYNC.ok=false;SYNC.err=String(e&&e.message||e);renderSync();return}
+   if(SYNC.busy)return;SYNC.busy=true;
+   try{
+   let rows;try{rows=await fetchBoard()}catch(e){SYNC.ok=false;SYNC.err=String(e&&e.message||e);console.warn('[2030orbit] 게시판 조회 실패:',e);renderSync();return}
   SYNC.ok=true;SYNC.err='';SYNC.last=Date.now();
   const posts=rows.map(p=>({id:'post:'+p.id,raw:p,pp:parsePost(p)})).filter(x=>x.pp.name&&![x.pp.name,x.pp.slogan].some(isBad));
   SYNC.count=posts.length;
-  const firstLive=!brands.some(b=>/^post:/.test(b.id));
+  const firstLive=!SYNC.started; // 첫 성공 동기화에서만 기존 게시물을 조용히 가져오기
   if(firstLive){ // replace the snapshot copied from the screenshot with the live board
     const old=brands.filter(b=>/^jgl/.test(b.id));for(const b of old){const s=sats.find(x=>x.b.id===b.id);if(s)removeSat(s)}brands=brands.filter(b=>!/^jgl/.test(b.id))}
   const known=new Set(brands.map(b=>b.id));const queued=new Set(queue.map(q=>q.bid).concat(active&&active.item&&active.item.bid?[active.item.bid]:[]));
@@ -1659,19 +1661,21 @@ async function syncBoard(){
     stopTour(false);if(follow||ret){if(follow)setFull(follow.s,false);follow=null;ret=null;$('detail').hidden=true;markNewest()}
     $('wall').hidden=true;closeLauncher();
     if(certOpen){clearTimeout(certT);certT=setTimeout(closeCert,2500)}else if(!active)nextLaunch()}
-  SYNC.started=true;startRealtime();renderSync()}
-const RT={state:'off',client:null};
-function startRealtime(){if(RT.client||RT.loading||!SYNC.ok)return;RT.loading=true;const s=document.createElement('script');
+  SYNC.started=true;startRealtime();renderSync()}finally{SYNC.busy=false}}
+const RT={state:'off',client:null,loading:false,lastAttempt:0};
+function startRealtime(){if(RT.client||RT.loading||!SYNC.ok||Date.now()-RT.lastAttempt<30000)return;RT.loading=true;RT.lastAttempt=Date.now();const s=document.createElement('script');
   s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js';
-  s.onload=()=>{try{const sb=window.supabase.createClient(JGL.SB,JGL.KEY,{auth:{persistSession:false,autoRefreshToken:false}});RT.client=sb;
+  s.onload=()=>{RT.loading=false;try{const sb=window.supabase.createClient(JGL.SB,JGL.KEY,{auth:{persistSession:false,autoRefreshToken:false}});RT.client=sb;
     sb.channel('brandwall-'+JGL.BOARD).on('postgres_changes',{event:'*',schema:'public',table:'posts',filter:'board=eq.'+JGL.BOARD},()=>syncBoard())
-      .subscribe(st=>{RT.state=st==='SUBSCRIBED'?'on':'off';renderSync()})}catch(e){RT.state='off';renderSync()}};
+      .subscribe(st=>{RT.state=st==='SUBSCRIBED'?'on':'off';if(st!=='SUBSCRIBED')console.warn('[2030orbit] 실시간 채널 상태:',st);renderSync()})}catch(e){RT.state='off';console.warn('[2030orbit] 실시간 초기화 실패:',e);renderSync()}};
   s.onerror=()=>{RT.state='off';RT.loading=false};document.head.appendChild(s)}
 function renderSync(){const el=document.getElementById('syncState');if(!el)return;
   const p=n=>String(n).padStart(2,'0');const d=new Date(SYNC.last);
   el.textContent=SYNC.ok?('보드 연동 · '+SYNC.count+'개 · '+(RT.state==='on'?'실시간':'5초마다 확인')+' · '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())):('보드 연동 안 됨'+(SYNC.err?' · '+SYNC.err:''));
   el.classList.toggle('off',!SYNC.ok);const ab=document.getElementById('autoBtn');if(ab){ab.textContent=SYNC.auto?'보드 자동 발사 켬':'보드 자동 발사 끔';ab.classList.toggle('on',SYNC.auto)}}
 function startSync(){syncBoard();clearInterval(SYNC.timer);SYNC.timer=setInterval(()=>{if(!document.hidden)syncBoard()},JGL.POLL)}
+window.addEventListener('online',()=>syncBoard());
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncBoard()});
 document.getElementById('autoBtn').onclick=()=>{SYNC.auto=!SYNC.auto;try{localStorage.setItem('brand-orbit-autolaunch',SYNC.auto?'1':'0')}catch(e){}renderSync()};
 document.getElementById('syncBtn').onclick=()=>{toast('보드 확인 중');syncBoard()};
 
