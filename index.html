@@ -1676,6 +1676,7 @@ load();brands.forEach(b=>addSat(b,true));
 if(location.hash==='#exhibit')setTimeout(()=>setExhibit(true),0);
 try{let ch=0;for(const b of brands){if(b.model)continue;const r=BOARD2030.find(x=>x[0]===b.name&&x[1]===(b.slogan||''));if(r&&r[3]){b.model=r[3];ch++}}if(ch)save()}catch(e){}
 try{if(!localStorage.getItem('brand-orbit-seed2030')){seedBoard();localStorage.setItem('brand-orbit-seed2030','1')}}catch(e){}markNewest();refreshCount();refreshInput();
+try{if(!localStorage.getItem('brand-orbit-board-only-1')){const old=brands.filter(b=>!/^jgl/.test(b.id));if(old.length){setTrash(old);for(const b of old){const s=sats.find(x=>x.b.id===b.id);if(s)removeSat(s)}brands=brands.filter(b=>/^jgl/.test(b.id))}seedBoard();save();markNewest();refreshCount();localStorage.setItem('brand-orbit-board-only-1','1')}}catch(e){}
 spin.updateMatrixWorld(true);
 (function(){const p=toWorld(padN,V()).normalize();const far=window.innerWidth<720?4.6:3.4;
   cam.position.copy(p).lerp(V().set(0,0.35,0),0.25).normalize().multiplyScalar(far);cam.lookAt(0,0,0)})();
