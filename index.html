@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-<title>2030 브랜드 궤도</title>
+<title>2030 브랜드 궤도 · JGL 실시간 동기화 개선</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1599,7 +1599,7 @@ $('seedBtn').onclick=()=>{const n=seedBoard();renderList();toast(n?n+'개 추가
 
 /* ================= JGL board live sync (works when the page is not sandboxed: jgl.kr, other hosts, or opened as a file) ================= */
 const JGL={SB:'https://nkwadxbdecbgbtnqnkyx.supabase.co',KEY:'sb_publishable_eeWomLZhUH2JUO54WSehvA_OGwcvdet',BOARD:'2030',POLL:5000};
-const SYNC={ok:false,last:0,count:0,err:'',auto:true,started:false,timer:0,busy:false};
+const SYNC={ok:false,last:0,count:0,total:0,err:'',auto:true,started:false,timer:0,busy:false,review:[]};
 try{SYNC.auto=localStorage.getItem('brand-orbit-autolaunch')!=='0'}catch(e){}
 function jglHeaders(){const h={apikey:JGL.KEY};if(JGL.KEY.indexOf('eyJ')===0)h.Authorization='Bearer '+JGL.KEY;return h}
 function htmlToText(s){s=String(s||'');if(!/[<&]/.test(s))return s;
@@ -1638,9 +1638,33 @@ async function syncBoard(){
    try{
    let rows;try{rows=await fetchBoard()}catch(e){SYNC.ok=false;SYNC.err=String(e&&e.message||e);console.warn('[2030orbit] 게시판 조회 실패:',e);renderSync();return}
   SYNC.ok=true;SYNC.err='';SYNC.last=Date.now();
-  const posts=rows.map(p=>({id:'post:'+p.id,raw:p,pp:parsePost(p)})).filter(x=>x.pp.name&&![x.pp.name,x.pp.slogan].some(isBad));
+  // Each saved JGL post has its own ID. Do not silently drop a post if its
+  // text format changes or its name/slogan contains a blocked substring.
+  // Display a safe placeholder instead; keep the source ID for reconciliation.
+  const posts=rows.filter(p=>p&&p.id!=null).map(p=>{
+    let pp;
+    try{pp=parsePost(p)}catch(e){
+      console.warn('[2030orbit] 게시물 해석 오류',p.id,e);
+      pp={name:'',slogan:'',info:{values:[],extra:[]},kind:'eo',text:''};
+    }
+    const reason=[];
+    if(!pp.name){
+      const title=[p.title,p.subject,p.heading,p.name].find(v=>typeof v==='string'&&v.trim());
+      pp.name=clean(htmlToText(title||'').split(/\r?\n/)[0]||'',20)||'2030 교실 ('+String(p.id).slice(0,6)+')';
+      reason.push('이름을 제목에서 복구');
+    }
+    if(isBad(pp.name)){pp.name='교실 이름 확인 중';reason.push('교실명 검토')}
+    if(isBad(pp.slogan)){pp.slogan='교실 소개 확인 중';reason.push('슬로건 검토')}
+    if(reason.length)console.warn('[2030orbit] 게시물 보정',String(p.id),reason.join(', '));
+    return {id:'post:'+p.id,raw:p,pp};
+  });
+  SYNC.total=rows.length;
   SYNC.count=posts.length;
-  const firstLive=!SYNC.started; // 첫 성공 동기화에서만 기존 게시물을 조용히 가져오기
+  if(SYNC.total!==SYNC.count){
+    SYNC.review=rows.filter(p=>!p||p.id==null).map(p=>p?.title||'(ID 없음)');
+    console.warn('[2030orbit] ID 누락 게시물:',SYNC.review);
+  }else SYNC.review=[];
+  const firstLive=!SYNC.started&&!brands.some(b=>/^post:/.test(b.id)); // 저장된 실시간 게시물 이력이 없을 때만 최초 가져오기
   if(firstLive){ // replace the snapshot copied from the screenshot with the live board
     const old=brands.filter(b=>/^jgl/.test(b.id));for(const b of old){const s=sats.find(x=>x.b.id===b.id);if(s)removeSat(s)}brands=brands.filter(b=>!/^jgl/.test(b.id))}
   const known=new Set(brands.map(b=>b.id));const queued=new Set(queue.map(q=>q.bid).concat(active&&active.item&&active.item.bid?[active.item.bid]:[]));
@@ -1648,7 +1672,7 @@ async function syncBoard(){
   for(const x of posts){
     if(known.has(x.id)){const b=brands.find(y=>y.id===x.id);const sig=JSON.stringify([x.pp.name,x.pp.slogan,x.pp.info]);if(b&&b.sig!==sig){applyInfo(b,x.pp);b.sig=sig;const s=sats.find(y=>y.b===b);if(s){const sp=s.tag.querySelector('span');if(sp)sp.textContent=b.name}changed++}continue}
     if(queued.has(x.id))continue;
-    if(!SYNC.started||firstLive||!SYNC.auto){ // existing posts go straight to orbit
+    if(firstLive||!SYNC.auto){ // 최초 접근 시엔 배치, 이미 받아온 기록이 있다면 누락분도 자동 발사
       const b=Object.assign({id:x.id,org:'',color:COLORS[(no)%COLORS.length],no:++no,gold:false,cheers:0,th0:Math.random()*6.283,t0:now,at:Date.parse(x.raw.created_at)||now,sig:JSON.stringify([x.pp.name,x.pp.slogan,x.pp.info])},rndOrbit());
       applyInfo(b,x.pp);brands.push(b);addSat(b,true);added++}
     else{queue.push({bid:x.id,name:x.pp.name,slogan:x.pp.slogan,org:x.pp.info.org?clean(x.pp.info.org,16):'',model:x.pp.info.model||'',info:x.pp.info,kind:x.pp.kind,color:COLORS[(no+launched)%COLORS.length],sig:JSON.stringify([x.pp.name,x.pp.slogan,x.pp.info])});launched++}}
@@ -1657,7 +1681,7 @@ async function syncBoard(){
   for(const b of brands.filter(b=>/^post:/.test(b.id)&&!live.has(b.id))){if(active&&active.sat&&active.sat.b===b)continue;const s=sats.find(x=>x.b.id===b.id);if(s)removeSat(s);brands=brands.filter(y=>y!==b);removed++}
   for(let i=queue.length-1;i>=0;i--)if(queue[i].bid&&!live.has(queue[i].bid)){queue.splice(i,1);removed++}
   if(added||changed||removed){save();markNewest();refreshCount()}
-  if(launched){refreshQueue();refreshCount();toast('보드 새 교실 '+launched+'개 발사');
+  if(launched){console.info('[2030orbit] 신규 게시물 자동 발사 등록:',launched+'개');refreshQueue();refreshCount();toast('보드 새 교실 '+launched+'개 발사');
     stopTour(false);if(follow||ret){if(follow)setFull(follow.s,false);follow=null;ret=null;$('detail').hidden=true;markNewest()}
     $('wall').hidden=true;closeLauncher();
     if(certOpen){clearTimeout(certT);certT=setTimeout(closeCert,2500)}else if(!active)nextLaunch()}
@@ -1671,7 +1695,7 @@ function startRealtime(){if(RT.client||RT.loading||!SYNC.ok||Date.now()-RT.lastA
   s.onerror=()=>{RT.state='off';RT.loading=false};document.head.appendChild(s)}
 function renderSync(){const el=document.getElementById('syncState');if(!el)return;
   const p=n=>String(n).padStart(2,'0');const d=new Date(SYNC.last);
-  el.textContent=SYNC.ok?('보드 연동 · '+SYNC.count+'개 · '+(RT.state==='on'?'실시간':'5초마다 확인')+' · '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())):('보드 연동 안 됨'+(SYNC.err?' · '+SYNC.err:''));
+  el.textContent=SYNC.ok?('보드 연동 · '+SYNC.count+'개'+(SYNC.total!==SYNC.count?' / 전체 '+SYNC.total+'개':'')+' · '+(RT.state==='on'?'실시간':'5초마다 확인')+' · '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())):('보드 연동 안 됨'+(SYNC.err?' · '+SYNC.err:''));
   el.classList.toggle('off',!SYNC.ok);const ab=document.getElementById('autoBtn');if(ab){ab.textContent=SYNC.auto?'보드 자동 발사 켬':'보드 자동 발사 끔';ab.classList.toggle('on',SYNC.auto)}}
 function startSync(){syncBoard();clearInterval(SYNC.timer);SYNC.timer=setInterval(()=>{if(!document.hidden)syncBoard()},JGL.POLL)}
 window.addEventListener('online',()=>syncBoard());
