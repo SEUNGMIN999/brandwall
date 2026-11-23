@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-<title>2030 브랜드 궤도 · JGL 실시간 동기화 개선</title>
+<title>2030교실 브랜드 궤도</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -317,7 +317,7 @@ body.exhibit .tag{font-size:15px}
 <div id="fade"></div>
 <div id="hud">
   <header class="head">
-    <h1>2030 브랜드 궤도</h1>
+    <h1>2030교실 브랜드 궤도</h1>
     <p>고흥 나로우주센터 발사</p>
     <div class="count"><span>궤도 위 브랜드</span><strong id="count">0</strong></div>
     <div class="fps" id="fps" hidden></div>
@@ -1441,17 +1441,61 @@ function updateReturn(dt){
   setCam(dir.multiplyScalar(lerp(ret.pos.length(),ret.end.length(),k)),ret.tgt.clone().lerp(V(),k),ret.up.clone().lerp(UP,k));
   if(k>=1){ret=null;cam.up.copy(UP);controls.target.set(0,0,0);cam.lookAt(0,0,0);controls.enabled=true;controls.autoRotate=true}
 }
+/* Idle camera: two satellites in sequence, then a complete Earth view for 10 seconds. */
+const TOUR_SAT_SECONDS=8;
+const TOUR_EARTH_SECONDS=10;
 let lastInteract=performance.now(),tour=null;
 ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>window.addEventListener(ev,e=>{lastInteract=performance.now();if(tour){if(e&&e.target&&e.target.closest&&e.target.closest('#detail')){tour=null;$('dTour').hidden=true}else stopTour(true)}},{passive:true,capture:true}));
 function stopTour(goHome){if(!tour)return;tour=null;$('dTour').hidden=true;if(goHome)closeDetail()}
-function tourStep(){const list=[...sats].sort((a,b)=>(b.b.at||0)-(a.b.at||0));if(!list.length){tour=null;return}
-  tour.i=(tour.i+1)%list.length;tour.t=0;
-  const s=list[tour.i];const from={pos:cam.position.clone(),tgt:controls.target.clone(),up:cam.up.clone()};
-  openDetail(s,true);follow.from=from;}
+function tourStep(){
+  const list=[...sats].sort((a,b)=>(b.b.at||0)-(a.b.at||0));
+  if(!list.length){stopTour(true);return}
+  tour.i=(tour.i+1)%list.length;
+  tour.t=0;
+  tour.phase='satellite';
+  tour.shown++;
+  const s=list[tour.i];
+  const from={pos:cam.position.clone(),tgt:controls.target.clone(),up:cam.up.clone()};
+  openDetail(s,true);
+  follow.from=from;
+}
+function tourEarth(){
+  tour.phase='return';
+  tour.t=0;
+  $('dTour').hidden=true;
+  closeDetail();
+  // Pull back far enough to see all of Earth, not a tightly cropped globe.
+  if(ret){
+    const distance=window.innerWidth<720?4.8:4.35;
+    ret.end=ret.end.clone().normalize().multiplyScalar(distance);
+  }else{
+    tour.phase='earth';
+    controls.enabled=true;
+    controls.autoRotate=true;
+  }
+}
 function updateTour(dt){
   const idle=performance.now()-lastInteract;
-  if(!tour){if(!active&&!certOpen&&scrim.hidden&&$('wall').hidden&&$('dock').classList.contains('collapsed')&&!follow&&!ret&&sats.length&&idle>(document.body.classList.contains('exhibit')?8000:25000)&&!/INPUT/.test((document.activeElement||{}).tagName||'')){tour={i:-1,t:0};tourStep()}return}
-  tour.t+=dt;if(tour.t>8)tourStep();
+  if(!tour){
+    if(!active&&!queue.length&&!certOpen&&scrim.hidden&&$('wall').hidden&&$('dock').classList.contains('collapsed')&&!follow&&!ret&&sats.length&&idle>(document.body.classList.contains('exhibit')?8000:25000)&&!/INPUT/.test((document.activeElement||{}).tagName||'')){
+      tour={i:-1,t:0,shown:0,phase:'satellite'};
+      tourStep();
+    }
+    return;
+  }
+  // Keep launch animations and user actions ahead of the idle tour.
+  if(active||queue.length||certOpen||!scrim.hidden||!$('wall').hidden){stopTour(true);return}
+  if(tour.phase==='return'){
+    if(!ret){tour.phase='earth';tour.t=0;}
+    return;
+  }
+  tour.t+=dt;
+  if(tour.phase==='earth'){
+    if(tour.t>=TOUR_EARTH_SECONDS){tour.shown=0;tourStep()}
+  }else if(tour.t>=TOUR_SAT_SECONDS){
+    if(tour.shown>=2)tourEarth();
+    else tourStep();
+  }
 }
 
 /* ================= sound (synthesised) ================= */
@@ -1501,12 +1545,18 @@ const STORY_EX={
 const STORY_T=['이 브랜드가 추구하는 수업','학생이 주도하는 배움의 모습','2030교실 활용 사례'];
 function renderStory(b){if(b.info&&(b.info.brandLine||b.info.lesson||b.info.goal||(b.info.values||[]).length)){renderInfo(b);return}
   renderStory0(b)}
+// External PDF/storage and simulator URLs are board metadata, not classroom-story fields.
+// Keep the original post and database connection; hide only URL-like entries in the UI.
+function isExternalLinkField(label,value){
+  const h=String(label||'').trim(),v=String(value||'').trim();
+  return /^https?$/i.test(h) || /(?:https?:\/\/|www\.|\.pdf(?:[?#\s]|$)|supabase\.co\/storage|jgl\.kr\/2030)/i.test(v) || /^\/\//.test(v);
+}
 function renderInfo(b){const I=b.info;const box=$('dStory');box.innerHTML='';
   const top=document.createElement('div');top.className='ci-top';
   if(I.type){const t0=document.createElement('span');t0.className='ci-type';t0.textContent=I.type;top.appendChild(t0)}
   (I.values||[]).forEach(v=>{const c=document.createElement('span');c.className='ci-tag';c.textContent='#'+v;top.appendChild(c)});
   if(top.children.length)box.appendChild(top);
-  const rows=[['수업 브랜드',I.brandLine],['대표 수업',I.lesson,I.lessonTag],['배움 목표',I.goal],['수업 모델',I.model]].concat((I.extra||[]).map(x=>[x[0],x[1]]));
+  const rows=[['수업 브랜드',I.brandLine],['대표 수업',I.lesson,I.lessonTag],['배움 목표',I.goal],['수업 모델',I.model]].concat((I.extra||[]).filter(x=>!isExternalLinkField(x[0],x[1])).map(x=>[x[0],x[1]]));
   rows.forEach(([h,v,tag])=>{if(!v)return;const d=document.createElement('div');d.className='st-item';const hh=document.createElement('div');hh.className='st-h';hh.textContent=h;
     if(tag){const c=document.createElement('span');c.className='st-ex';c.textContent=tag;hh.appendChild(c)}
     const p=document.createElement('p');p.textContent=v;d.append(hh,p);box.appendChild(d)})}
@@ -1617,7 +1667,7 @@ function parsePost(p){
   let head=lines.find(l=>/[—–]|\s-\s/.test(l)&&!/^[·•\-*]\s*[^:：]{2,8}\s*[:：]/.test(l))||lines[0]||'';
   const hm=head.split(/\s*[—–]\s*|\s+-\s+/);const name=clean(hm[0]||'',20);const slogan=clean(hm.slice(1).join(' ')||'',30);
   const info={};const extra=[];
-  for(const l of lines){const m=l.match(/^[·•\-*∙ㆍ]?\s*([^:：]{2,12}?)\s*[:：]\s*(.+)$/);if(!m)continue;
+  for(const l of lines){if(isExternalLinkField('',l))continue;const m=l.match(/^[·•\-*∙ㆍ]?\s*([^:：]{2,12}?)\s*[:：]\s*(.+)$/);if(!m)continue;
     const k=m[1].replace(/\s+/g,''),v=m[2].trim();
     if(/교실유형/.test(k))info.type=v.replace(/\s*\(.*$/,'').trim();
     else if(/수업모델/.test(k))info.model=v;
