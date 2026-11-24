@@ -142,7 +142,14 @@ button:focus,input:focus{outline:none}
 .list li{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px}
 .list li:hover{background:var(--point-soft)}
 .list .nm{flex:1;min-width:0;font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.list .tm{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+/* Brand name and date occupy separate lines so they fit tablets and phones. */
+.list .brand-row-main{display:flex;flex-direction:column;justify-content:center;gap:4px;flex:1;min-width:0}
+.list .brand-row-main .nm{flex:none;max-width:100%}
+.list .tm{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.list .del{flex-shrink:0}
+.list li.is-editing{flex-wrap:wrap}
+.list li.is-editing .ed-in{flex:1 1 120px}
+@media (max-width:420px){.list li{gap:6px;padding:10px 7px}.list .del{padding:0 9px}.list .nm{font-size:14px}.list .tm{font-size:11px}}
 .list .del{height:32px;padding:0 12px;border-radius:8px;background:transparent;color:var(--danger);font-size:13px;font-weight:600;border:1px solid var(--panel-line)}
 .empty{padding:28px 12px;text-align:center;color:var(--muted);font-size:14px}
 .m-foot{display:flex;justify-content:space-between;align-items:center;padding:12px 18px 16px 22px;border-top:1px solid var(--panel-line)}
@@ -1276,9 +1283,9 @@ function patchSVG(b){const id='pc'+(patchN++);const c=colorOf(b);const ch=[...(b
 const satNo=b=>'2030-'+String(b.no||0).padStart(3,'0');
 function inclOf(b){const P=new THREE.Vector3().fromArray(b.P),D=new THREE.Vector3().fromArray(b.D);const n=new THREE.Vector3().crossVectors(P,D).normalize();
   const N=new THREE.Vector3(0,1,0).applyQuaternion(tilt.quaternion);return Math.acos(clamp(n.dot(N),-1,1))/D2R}
-function fmtDate(t){const d=new Date(t);const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'.'+p(d.getMonth()+1)+'.'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())}
+function fmtDate(t){const d=kstParts(t);if(!d)return '시각 기록 없음';const p=n=>String(n).padStart(2,'0');return d.year+'.'+p(d.month)+'.'+p(d.day)+' '+d.hh+':'+d.mm}
 function gridHTML(b,full){const v=valOf(b);const rows=[['위성 종류',v.type],['핵심 가치',v.k],['수업 모델',b.model||'—','model'],
-  ['현재 위치',placeOfBrand(b),'loc'],['발사 시각',fmtDate(b.at||b.t0)],['발사체','나로호']];
+  ['현재 위치',placeOfBrand(b),'loc'],[brandTimeInfo(b).label,fmtDate(brandTimeInfo(b).t)],['발사체','나로호']];
   if(!full)rows.splice(5,1,['위성 번호',satNo(b)]);
   return rows.map(r=>'<div'+(r[2]==='model'?' class="wide"':'')+'><dt>'+r[0]+'</dt><dd'+(r[2]==='loc'?' data-loc':'')+(r[2]==='model'?' title="'+esc(r[1])+'"':'')+'>'+esc(r[1])+'</dd></div>').join('')}
 let toastT=0;function toast(m){toastEl.textContent=m;toastEl.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>toastEl.classList.remove('on'),2200)}
@@ -1289,21 +1296,42 @@ let lastCd=null;function showCd(n){if(n===lastCd)return;lastCd=n;cdEl.classList.
   cdEl.textContent=n;void cdEl.offsetWidth;cdEl.classList.add('tick')}
 function mmss(sec){const s=Math.abs(Math.round(sec));return (sec<0?'T- ':'T+ ')+String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
 const scrim=$('scrim'),listEl=$('list'),confirmEl=$('confirm');
-function fmt(t){const d=new Date(t);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}
+/* Stored timestamps are epoch milliseconds. Format consistently in Korea time,
+   even if the viewer's tablet/TV/phone is set to another time zone. */
+function kstParts(t){
+  const v=Number(t);if(!Number.isFinite(v)||v<=0)return null;
+  const d=new Date(v+9*60*60*1000);if(Number.isNaN(d.getTime()))return null;
+  const p=n=>String(n).padStart(2,'0');
+  return {year:d.getUTCFullYear(),month:d.getUTCMonth()+1,day:d.getUTCDate(),
+    hh:p(d.getUTCHours()),mm:p(d.getUTCMinutes())};
+}
+function fmt(t){const d=kstParts(t);return d?d.month+'월 '+d.day+'일 '+d.hh+':'+d.mm:'시각 기록 없음'}
+function fmtFullKST(t){const d=kstParts(t);return d?d.year+'년 '+d.month+'월 '+d.day+'일 '+d.hh+':'+d.mm+' (한국시간)':'시각 기록 없음'}
+/* Old board snapshots carry created_at, not a verified rocket ignition time. */
+function brandTimeInfo(b){
+  const valid=n=>typeof n==='number'&&Number.isFinite(n)&&n>0;
+  if(valid(b.launchedAt))return {type:'발사',label:'발사 시각',t:b.launchedAt};
+  if(valid(b.orbitedAt))return {type:'진입',label:'궤도 진입 시각',t:b.orbitedAt};
+  if(/^post:/.test(String(b.id||'')))return {type:'등록',label:'게시판 등록 시각',t:b.postedAt||b.at||b.t0};
+  if(/^(jgl|test)/.test(String(b.id||'')))return {type:'배치',label:'위성 배치 시각',t:b.at||b.t0};
+  return {type:'진입',label:'궤도 진입 시각',t:b.at||b.t0};
+}
 function renderList(){listEl.innerHTML='';{const ub0=document.getElementById('undoBtn');if(ub0)ub0.hidden=!getTrash().length}$('mCount').textContent='총 '+brands.length+'개';
   if(!brands.length){const e=document.createElement('li');e.className='empty';e.textContent='궤도 위 브랜드 없음';listEl.appendChild(e);return}
   [...brands].reverse().forEach(b=>{const li=document.createElement('li');const nm=document.createElement('span');nm.className='nm';nm.textContent=b.org?b.name+' · '+b.org:b.name;
-    const tm=document.createElement('span');tm.className='tm';tm.textContent=fmt(b.at||b.t0);
+    const ti=brandTimeInfo(b);
+    const tm=document.createElement('span');tm.className='tm';tm.textContent=ti.type+' · '+fmt(ti.t);
+    tm.title=ti.label+': '+fmtFullKST(ti.t);
     const del=document.createElement('button');del.className='del';del.textContent='삭제';
     del.onclick=()=>{setTrash([b]);const s=sats.find(x=>x.b.id===b.id);if(s&&!(active&&active.sat===s))removeSat(s);brands=brands.filter(x=>x.id!==b.id);save();markNewest();refreshCount();renderList();toast('삭제 완료')};
     const ed=document.createElement('button');ed.className='del edit';ed.textContent='수정';
-    ed.onclick=()=>{li.innerHTML='';const i1=document.createElement('input');i1.className='ed-in';i1.maxLength=20;i1.value=b.name;
+    ed.onclick=()=>{li.classList.add('is-editing');li.innerHTML='';const i1=document.createElement('input');i1.className='ed-in';i1.maxLength=20;i1.value=b.name;
       const i2=document.createElement('input');i2.className='ed-in';i2.maxLength=30;i2.value=b.slogan||'';i2.placeholder='브랜드';
       const ok=document.createElement('button');ok.className='del edit';ok.textContent='저장';
       ok.onclick=()=>{const n=clean(i1.value,20);if(!n||isBad(n+' '+i2.value)){toast('사용할 수 없는 이름');return}
         b.name=n;b.slogan=clean(i2.value,30);save();const s=sats.find(x=>x.b.id===b.id);if(s){const sp1=s.tag.querySelector('span');if(sp1)sp1.textContent=n}renderList();toast('수정 완료')};
       li.append(i1,i2,ok);i1.focus()};
-    li.append(nm,tm,ed,del);listEl.appendChild(li)});
+    const main=document.createElement('div');main.className='brand-row-main';main.append(nm,tm);li.append(main,ed,del);listEl.appendChild(li)});
   const ub=document.getElementById('undoBtn');if(ub)ub.hidden=!getTrash().length}
 
 $('closeBtn').onclick=()=>scrim.hidden=true;
@@ -1387,7 +1415,7 @@ function insert(a,posW,velW){
   const P=posW.clone().normalize();const D=velW.clone();D.addScaledVector(P,-D.dot(P)).normalize();
   const t=Date.now();const r=posW.length();
   const no=brands.reduce((m,x)=>Math.max(m,x.no||0),0)+1;
-  const it=a.item;const b={id:it.bid||(t.toString(36)+Math.random().toString(36).slice(2,6)),info:it.info,sig:it.sig,name:a.name,org:it.org,slogan:it.slogan,model:it.model||'',lesson:it.lesson||'',learner:it.learner||'',usecase:it.usecase||'',kind:it.kind,color:it.color,no,gold:no%10===0&&!it.test,test:!!it.test,cheers:0,P:P.toArray(),D:D.toArray(),r,w:orbW(r),th0:0,t0:t,at:t};
+  const it=a.item;const b={id:it.bid||(t.toString(36)+Math.random().toString(36).slice(2,6)),info:it.info,sig:it.sig,name:a.name,org:it.org,slogan:it.slogan,model:it.model||'',lesson:it.lesson||'',learner:it.learner||'',usecase:it.usecase||'',kind:it.kind,color:it.color,no,gold:no%10===0&&!it.test,test:!!it.test,cheers:0,P:P.toArray(),D:D.toArray(),r,w:orbW(r),th0:0,t0:t,at:t,launchedAt:a.ignitedAt||t,orbitedAt:t,postedAt:it.postedAt||null};
   brands.push(b);save();a.sat=addSat(b,false);markNewest();refreshCount();
 }
 function recoverLaunch(){const a=active;if(!a)return;
@@ -1592,7 +1620,7 @@ function backPhase(a,dt){
     active=null;refreshCount();if(!certOpen)setTimeout(nextLaunch,600)}
 }
 
-function ignite(){if(!active||active.ignited)return;active.ignited=true;$('igniteBtn').hidden=true;auResume();sfx.go()}
+function ignite(){if(!active||active.ignited)return;active.ignited=true;active.ignitedAt=Date.now();$('igniteBtn').hidden=true;auResume();sfx.go()}
 $('igniteBtn').onclick=ignite;
 document.addEventListener('keydown',e=>{if((e.key===' '||e.key==='Enter')&&active&&!active.ignited&&!$('igniteBtn').hidden&&!/INPUT/.test((document.activeElement||{}).tagName||'')){e.preventDefault();ignite()}});
 let certOpen=false,certT=0;
@@ -1932,12 +1960,22 @@ async function syncBoard(){
   const known=new Set(brands.map(b=>b.id));const queued=new Set(queue.map(q=>q.bid).concat(active&&active.item&&active.item.bid?[active.item.bid]:[]));
   let added=0,launched=0,changed=0;const now=Date.now();let no=brands.reduce((m,x)=>Math.max(m,x.no||0),0);
   for(const x of posts){
-    if(known.has(x.id)){const b=brands.find(y=>y.id===x.id);const sig=JSON.stringify([x.pp.name,x.pp.slogan,x.pp.info]);if(b&&b.sig!==sig){applyInfo(b,x.pp);b.sig=sig;const s=sats.find(y=>y.b===b);if(s){const sp=s.tag.querySelector('span');if(sp)sp.textContent=b.name}changed++}continue}
+    if(known.has(x.id)){const b=brands.find(y=>y.id===x.id);const sig=JSON.stringify([x.pp.name,x.pp.slogan,x.pp.info]);
+      if(b){const posted=Date.parse(x.raw.created_at);
+        if(Number.isFinite(posted)&&posted>0&&!b.postedAt){
+          b.postedAt=posted;
+          // Legacy launched satellites used 'at' for their orbital insertion time,
+          // while snapshots used exactly created_at. Only recover when distinguishable.
+          if(!b.launchedAt&&!b.orbitedAt&&Number.isFinite(b.at)&&b.at-posted>15000)b.orbitedAt=b.at;
+          changed++;
+        }
+      }
+      if(b&&b.sig!==sig){applyInfo(b,x.pp);b.sig=sig;const s=sats.find(y=>y.b===b);if(s){const sp=s.tag.querySelector('span');if(sp)sp.textContent=b.name}changed++}continue}
     if(queued.has(x.id))continue;
     if(firstLive||!SYNC.auto){ // 최초 접근 시엔 배치, 이미 받아온 기록이 있다면 누락분도 자동 발사
-      const b=Object.assign({id:x.id,org:'',color:COLORS[(no)%COLORS.length],no:++no,gold:false,cheers:0,th0:Math.random()*6.283,t0:now,at:Date.parse(x.raw.created_at)||now,sig:JSON.stringify([x.pp.name,x.pp.slogan,x.pp.info])},rndOrbit());
+      const b=Object.assign({id:x.id,org:'',color:COLORS[(no)%COLORS.length],no:++no,gold:false,cheers:0,th0:Math.random()*6.283,t0:now,at:Date.parse(x.raw.created_at)||now,postedAt:Date.parse(x.raw.created_at)||now,sig:JSON.stringify([x.pp.name,x.pp.slogan,x.pp.info])},rndOrbit());
       applyInfo(b,x.pp);brands.push(b);addSat(b,true);added++}
-    else{queue.push({bid:x.id,name:x.pp.name,slogan:x.pp.slogan,org:x.pp.info.org?clean(x.pp.info.org,16):'',model:x.pp.info.model||'',info:x.pp.info,kind:x.pp.kind,color:COLORS[(no+launched)%COLORS.length],sig:JSON.stringify([x.pp.name,x.pp.slogan,x.pp.info])});launched++}}
+    else{queue.push({bid:x.id,name:x.pp.name,slogan:x.pp.slogan,org:x.pp.info.org?clean(x.pp.info.org,16):'',model:x.pp.info.model||'',info:x.pp.info,postedAt:Date.parse(x.raw.created_at)||null,kind:x.pp.kind,color:COLORS[(no+launched)%COLORS.length],sig:JSON.stringify([x.pp.name,x.pp.slogan,x.pp.info])});launched++}}
   // posts removed from the board leave orbit too
   const live=new Set(posts.map(x=>x.id));let removed=0;
   for(const b of brands.filter(b=>/^post:/.test(b.id)&&!live.has(b.id))){if(active&&active.sat&&active.sat.b===b)continue;const s=sats.find(x=>x.b.id===b.id);if(s)removeSat(s);brands=brands.filter(y=>y!==b);removed++}
@@ -2021,8 +2059,8 @@ async function saveFile(filename,data,title){
 const stamp=()=>{const d=new Date(),p=n=>String(n).padStart(2,'0');return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())};
 $('expJson').onclick=()=>saveFile('2030-brand-orbit-'+stamp()+'.json',JSON.stringify(brands),'백업 데이터');
 $('expCsv').onclick=()=>{const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
-  const rows=[['위성 번호','교실명','브랜드','소속','핵심 가치','위성 종류','수업 모델','추구하는 수업','학생 주도 배움','2030교실 활용','응원','발사 시각'].map(q).join(',')];
-  brands.forEach(b=>{const v=valOf(b);rows.push([satNo(b),b.name,b.slogan||'',b.org||'',v.k,v.type,b.model||'',b.lesson||'',b.learner||'',b.usecase||'',b.cheers||0,fmtDate(b.at||b.t0)].map(q).join(','))});
+  const rows=[['위성 번호','교실명','브랜드','소속','핵심 가치','위성 종류','수업 모델','추구하는 수업','학생 주도 배움','2030교실 활용','응원','시각 구분','기록 시각 (한국시간)'].map(q).join(',')];
+  brands.forEach(b=>{const v=valOf(b);rows.push([satNo(b),b.name,b.slogan||'',b.org||'',v.k,v.type,b.model||'',b.lesson||'',b.learner||'',b.usecase||'',b.cheers||0,brandTimeInfo(b).label,fmtFullKST(brandTimeInfo(b).t)].map(q).join(','))});
   saveFile('2030-brand-list-'+stamp()+'.csv','\uFEFF'+rows.join('\r\n'),'브랜드 목록')};
 $('impBtn').onclick=()=>showIO('백업 불러오기','',true);
 $('ioCancel').onclick=()=>$('ioBox').hidden=true;
@@ -2036,7 +2074,7 @@ $('ioApply').onclick=()=>{let arr;try{arr=JSON.parse($('ioText').value)}catch(e)
     const o=ok?{P:x.P,D:x.D,r:x.r,w:x.w,th0:x.th0,t0:x.t0}:Object.assign({th0:Math.random()*6.28,t0:t0},rndOrbit());
     const nn=(typeof x.no==='number'&&x.no>0&&!brands.some(b=>b.no===x.no))?x.no:++no;
     const b=Object.assign({id,name:clean(x.name,20),org:clean(String(x.org||''),16),slogan:clean(String(x.slogan||''),30),model:clean(String(x.model||''),30),lesson:clean(String(x.lesson||''),60),learner:clean(String(x.learner||''),60),usecase:clean(String(x.usecase||''),60),kind:KIND[x.kind]?x.kind:'eo',
-      color:/^#[0-9a-fA-F]{6}$/.test(x.color||'')?x.color:COLORS[added%COLORS.length],no:nn,gold:!!x.gold,cheers:Math.max(0,Math.min(9999,parseInt(x.cheers)||0)),at:typeof x.at==='number'?x.at:t0},o);
+      color:/^#[0-9a-fA-F]{6}$/.test(x.color||'')?x.color:COLORS[added%COLORS.length],no:nn,gold:!!x.gold,cheers:Math.max(0,Math.min(9999,parseInt(x.cheers)||0)),at:typeof x.at==='number'?x.at:t0,postedAt:typeof x.postedAt==='number'?x.postedAt:null,launchedAt:typeof x.launchedAt==='number'?x.launchedAt:null,orbitedAt:typeof x.orbitedAt==='number'?x.orbitedAt:null},o);
     brands.push(b);addSat(b,true);added++}
   save();markNewest();refreshCount();renderList();$('ioBox').hidden=true;toast(added?added+'개 불러오기 완료':'새 브랜드 없음')};
 // --- wall + stats ---
@@ -2090,7 +2128,7 @@ function certCanvas(b){const W=1400,H=860,c=document.createElement('canvas');c.w
   
   if(b.org){x.font='600 32px '+ff;x.fillStyle='#6A7483';x.fillText(b.org,362,b.slogan?395:345)}
   x.strokeStyle='#E5E8EE';x.lineWidth=2;x.beginPath();x.moveTo(64,490);x.lineTo(W-64,490);x.moveTo(64,740);x.lineTo(W-64,740);x.stroke();
-  const v=valOf(b);const cells=[['위성 종류',v.type],['핵심 가치',v.k],['수업 모델',b.model||'—'],['현재 위치',placeOfBrand(b)],['발사 시각',fmtDate(b.at||b.t0)],['발사체','나로호']];
+  const v=valOf(b);const cells=[['위성 종류',v.type],['핵심 가치',v.k],['수업 모델',b.model||'—'],['현재 위치',placeOfBrand(b)],[brandTimeInfo(b).label,fmtDate(brandTimeInfo(b).t)],['발사체','나로호']];
   cells.forEach((r,i)=>{const px=64+(i%3)*((W-128)/3),py=545+Math.floor(i/3)*110;x.font='600 28px '+ff;x.fillStyle='#6A7483';x.fillText(r[0],px,py);x.font='700 40px '+ff;x.fillStyle='#121722';x.fillText(r[1],px,py+48)});
   x.font='500 28px '+ff;x.fillStyle='#6A7483';x.fillText('고흥 나로우주센터 · 나로호 · 2030교실 브랜드 부스',64,800);
   return c}
