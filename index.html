@@ -466,6 +466,73 @@ body.lite-fx .tag{transition:none}
 }
 @media(min-width:721px) and (max-height:460px){.w-insights{grid-template-columns:repeat(2,minmax(0,1fr))}.w-stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
 
+
+/* Simulator-aligned manual registration, responsive on TV/tablet/mobile */
+.dock:not(.collapsed){width:min(650px,calc(100% - 24px));max-height:calc(var(--scene-h,100dvh) - 14px);z-index:6}
+.dock:not(.collapsed) .launcher{max-height:min(82dvh,calc(var(--scene-h,100dvh) - 28px));overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;gap:0;padding:0 14px 0;border-radius:20px}
+.sim-head{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;padding:17px 4px 13px;position:sticky;top:0;background:var(--panel);z-index:2;border-bottom:1px solid var(--panel-line)}
+.sim-head strong{font-size:19px;display:block;line-height:1.3;font-weight:800}
+.sim-head span{display:block;margin-top:3px;font-size:12px;color:var(--muted);line-height:1.45}
+.sim-close{flex:none;width:34px;height:34px;border-radius:9px;background:var(--field);color:var(--ink);font-size:18px}
+.sim-step{padding:13px 3px 16px;border-bottom:1px solid var(--panel-line);display:flex;flex-direction:column;gap:9px}
+.sim-step-title{display:flex;align-items:center;gap:7px;color:var(--ink);font-size:14px;font-weight:800}
+.sim-step-title b{font:700 11px/1.1 inherit;color:var(--point);border-left:3px solid var(--point);padding-left:6px}
+.sim-step-title small{font-size:11px;font-weight:600;color:var(--muted)}
+.sim-count-row{display:flex;align-items:center;gap:8px}.sim-student{width:120px;flex:none}.sim-student input{font-variant-numeric:tabular-nums}.sim-unit{font-size:14px;color:var(--muted)}
+.sim-choice-row,.sim-choice-grid,.sim-room-grid{display:grid;gap:6px}
+.sim-count-choices{grid-template-columns:repeat(5,minmax(0,1fr))}
+.sim-grade-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.sim-tag-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.sim-method-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.sim-room-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.sim-choice-row button,.sim-choice-grid button,.sim-room-grid button{padding:10px 6px;border-radius:9px;border:1px solid var(--panel-line);background:var(--field);color:var(--ink);font-size:13px;font-weight:700;line-height:1.25;white-space:normal;min-height:38px}
+.sim-room-grid button{text-align:left;padding:12px;display:flex;flex-direction:column;align-items:flex-start;gap:3px}
+.sim-room-grid button span{font-size:14px;font-weight:800}.sim-room-grid button small{font-size:11px;font-weight:600;color:var(--muted)}
+.sim-choice-row button[aria-pressed="true"],.sim-choice-grid button[aria-pressed="true"],.sim-room-grid button[aria-pressed="true"]{border-color:var(--point);background:var(--point-soft);box-shadow:inset 0 0 0 1px var(--point);color:var(--ink)}
+.sim-room-grid button[aria-pressed="true"]{border-color:var(--room-color,var(--point));box-shadow:inset 0 0 0 1.5px var(--room-color,var(--point))}
+.sim-input-stack{display:flex;flex-direction:column;gap:7px}.sim-input-stack .fld{width:100%;flex:auto}
+.sim-input-stack .fld input{font-size:15px;line-height:1.4;height:33px}
+.sim-input-stack .fld.grow input{font-size:15px;height:33px}
+.sim-input-stack em{font-style:normal;color:var(--point);font-size:10px}
+.launcher>.story-tg{margin:12px 3px 8px}.launcher>.story{padding-bottom:12px}
+.dock:not(.collapsed) .launcher>.bottom{position:sticky;bottom:0;z-index:3;margin:0 -14px;background:var(--panel);padding:10px 14px calc(env(safe-area-inset-bottom,0px) + 12px);border-top:1px solid var(--panel-line);display:flex;gap:8px;align-items:center}
+.sim-launch-state{font-size:11px;line-height:1.45;color:var(--muted);flex:1 1 100%;order:-1}
+.dock:not(.collapsed) .bottom .opt{min-width:0}.dock:not(.collapsed) .bottom .launch{margin-left:auto}
+.dock:not(.collapsed) .bottom .launch:disabled{opacity:.35}
+@media (max-width:720px){
+ .dock:not(.collapsed){width:calc(100% - 16px);bottom:calc(env(safe-area-inset-bottom,0px) + 6px)}
+ .dock:not(.collapsed) .launcher{max-height:calc(var(--vvh,100dvh) - 16px);padding-left:11px;padding-right:11px;border-radius:16px}
+ .sim-head{padding-top:12px}.sim-head strong{font-size:17px}
+ .sim-step{padding:11px 1px 12px}.sim-step-title{font-size:13px}
+ .sim-count-choices{grid-template-columns:repeat(5,minmax(0,1fr))}
+ .sim-method-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .sim-choice-row button,.sim-choice-grid button{font-size:12px;min-height:36px;padding:8px 2px}
+ .sim-room-grid button{padding:10px;min-height:62px}
+ .dock:not(.collapsed) .launcher>.bottom{margin:0 -11px;padding:9px 11px calc(env(safe-area-inset-bottom,0px) + 9px)}
+ .dock:not(.collapsed) .bottom .opt{flex:1 1 100%}
+ .dock:not(.collapsed) .bottom .fold{flex:1}
+ .dock:not(.collapsed) .bottom .launch{flex:2;font-size:15px}
+}
+@media(max-width:380px){.sim-tag-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.sim-head strong{font-size:16px}}
+@media(max-height:610px) and (orientation:landscape){.dock:not(.collapsed){width:min(670px,calc(100% - 18px))}.dock:not(.collapsed) .launcher{max-height:calc(var(--scene-h,100dvh) - 14px)}}
+
+
+:root{--form-surface:#f4f5f7}
+:root[data-theme="dark"]{--form-surface:#1a2434}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--form-surface:#1a2434}}
+.dock:not(.collapsed) .launcher{background:var(--form-surface)}
+.dock:not(.collapsed) .sim-head,.dock:not(.collapsed) .launcher>.bottom{background:var(--form-surface)}
+.dock:not(.collapsed) .launcher>.bottom{align-items:stretch}
+.dock:not(.collapsed) .launcher>.bottom .launch{flex:2 1 auto;min-width:135px}
+.dock:not(.collapsed) .launcher>.bottom .fold{flex:1 1 auto}
+.dock:not(.collapsed) .launcher>.bottom .sim-launch-state{width:100%;flex-basis:100%}
+.sim-step-title b{font-family:inherit;font-size:11px;font-weight:800;line-height:1.1}
+.sim-advanced{padding:10px 3px 13px}.sim-advanced summary{cursor:pointer;font-size:13px;font-weight:800;display:flex;gap:8px;align-items:center;color:var(--ink)}
+.sim-advanced summary span{font-size:11px;font-weight:600;color:var(--muted)}
+.sim-advanced summary::marker{color:var(--point)}
+.sim-advanced-body{display:flex;flex-wrap:wrap;gap:13px;padding:12px 2px 3px}
+@media(max-width:720px){.sim-advanced-body{flex-direction:column;gap:8px}.sim-advanced .chips{flex-wrap:wrap}.sim-advanced .sw{flex-wrap:wrap;height:auto}}
+
 </style>
 </head>
 <body>
@@ -508,16 +575,46 @@ body.lite-fx .tag{transition:none}
   <div class="dock pe collapsed" id="dock">
     <div class="hint" id="hint">첫 번째 교실 브랜드 발사 대기</div>
     <div class="mini-row"><button class="mini" id="miniBtn">브랜드 입력<span class="mini-q" id="miniQ"></span></button><button class="mini alt" id="wallBtn">한눈에 보기</button></div>
-    <div class="launcher">
-      <div class="f-row">
-        <label class="fld grow"><span>교실명</span><input id="nameInput" maxlength="20" placeholder="예: 2030 반짝 교실" autocomplete="off" enterkeyhint="send"></label>
-        <label class="fld org"><span>소속</span><input id="orgInput" maxlength="16" placeholder="학교·학급" autocomplete="off" enterkeyhint="send"></label>
-        <button class="fold ai-btn" id="aiBtn" hidden>AI 추천</button>
-      </div>
-      <div class="f-row"><label class="fld grow"><span>브랜드</span><input id="sloganInput" maxlength="30" placeholder="예: 도전과 성취가 살아있는 교실" autocomplete="off" enterkeyhint="send"></label>
-        <label class="fld model"><span>수업 모델</span><input id="modelInput" maxlength="30" placeholder="예: 생태전환 × 사회정서" autocomplete="off" enterkeyhint="send"></label></div>
+    <div class="launcher" role="region" aria-label="2030교실 브랜드 직접 발사 입력">
+      <div class="sim-head"><div><strong>2030교실 브랜드 만들기</strong><span>시뮬레이터와 같은 정보로 나만의 브랜드 위성을 발사합니다.</span></div><button class="sim-close" type="button" id="simClose" aria-label="입력창 닫기">✕</button></div>
+      <section class="sim-step" aria-labelledby="simStudentsTitle">
+        <div class="sim-step-title" id="simStudentsTitle"><b>01</b> 학생 수 <small>학급 인원</small></div>
+        <div class="sim-count-row"><label class="fld sim-student"><span>학생 수</span><input id="studentInput" type="number" inputmode="numeric" min="1" max="60" step="1" placeholder="예: 24" aria-label="학생 수"></label><span class="sim-unit">명</span></div>
+        <div class="sim-choice-row sim-count-choices" id="studentChoices" aria-label="학생 수 빠른 선택">
+          <button type="button" data-count="12">12명</button><button type="button" data-count="16">16명</button><button type="button" data-count="20">20명</button><button type="button" data-count="24">24명</button><button type="button" data-count="28">28명</button>
+        </div>
+      </section>
+      <section class="sim-step" aria-labelledby="simGradeTitle">
+        <div class="sim-step-title" id="simGradeTitle"><b>02</b> 대상 학년 <small>한 학년 선택</small></div>
+        <div class="sim-choice-grid sim-grade-grid" id="gradeChoices" aria-label="대상 학년">
+          <button type="button" data-grade="1학년" aria-pressed="false">1학년</button><button type="button" data-grade="2학년" aria-pressed="false">2학년</button><button type="button" data-grade="3학년" aria-pressed="false">3학년</button><button type="button" data-grade="4학년" aria-pressed="false">4학년</button><button type="button" data-grade="5학년" aria-pressed="false">5학년</button><button type="button" data-grade="6학년" aria-pressed="false">6학년</button>
+        </div>
+      </section>
+      <section class="sim-step" aria-labelledby="simTopicTitle">
+        <div class="sim-step-title" id="simTopicTitle"><b>03</b> 수업 주제 <small>1~2개 선택</small></div>
+        <div class="sim-choice-grid sim-tag-grid" id="topicChoices" aria-label="수업 주제"></div>
+      </section>
+      <section class="sim-step" aria-labelledby="simMethodTitle">
+        <div class="sim-step-title" id="simMethodTitle"><b>04</b> 수업 방법 <small>1~2개 선택</small></div>
+        <div class="sim-choice-grid sim-method-grid" id="methodChoices" aria-label="수업 방법"></div>
+      </section>
+      <section class="sim-step" aria-labelledby="simRoomTitle">
+        <div class="sim-step-title" id="simRoomTitle"><b>05</b> 교실 유형 <small>위성 외형과 색상에 반영</small></div>
+        <div class="sim-room-grid" id="roomChoices" aria-label="교실 유형"></div>
+      </section>
+      <section class="sim-step sim-brand-step" aria-labelledby="simBrandTitle">
+        <div class="sim-step-title" id="simBrandTitle"><b>06</b> 교실·수업 브랜드 <small>교실 브랜드명 필수</small></div>
+        <div class="sim-input-stack">
+          <label class="fld grow"><span>교실 브랜드 <em>필수</em></span><input id="nameInput" maxlength="40" placeholder="예: 2030 그린플래닛 교실" autocomplete="off" enterkeyhint="next"></label>
+          <label class="fld grow"><span>브랜드 한마디</span><input id="sloganInput" maxlength="80" placeholder="예: 함께 탐구하고 미래를 바꾸는 교실" autocomplete="off" enterkeyhint="next"></label>
+          <label class="fld grow"><span>수업 브랜드</span><input id="lessonBrandInput" maxlength="80" placeholder="예: 2050 그린플래닛 — 미래 생태계를 설계하다" autocomplete="off" enterkeyhint="next"></label>
+          <label class="fld grow"><span>소속 (선택)</span><input id="orgInput" maxlength="40" placeholder="예: 무안초 4학년 1반" autocomplete="off" enterkeyhint="next"></label>
+        </div>
+      </section>
+      <button class="fold ai-btn" id="aiBtn" hidden type="button">AI 추천</button>
       <button class="story-tg" id="storyTg">수업 이야기<b id="storyCnt"></b></button>
       <div class="story" id="storyBox" hidden>
+        <label class="fld grow"><span>수업 모델 (선택)</span><input id="modelInput" maxlength="80" placeholder="예: 생태전환 × 사회정서" autocomplete="off"></label>
         <label class="fld"><span>추구하는 수업</span><input id="stLesson" maxlength="60" placeholder="예: 질문에서 시작해 함께 답을 찾는 수업" autocomplete="off"></label>
         <label class="fld"><span>학생이 주도하는 배움</span><input id="stLearner" maxlength="60" placeholder="예: 학생이 탐구 질문과 방법을 직접 설계" autocomplete="off"></label>
         <div class="f-row"><label class="fld grow"><span>2030교실 활용 사례</span><input id="stUse" maxlength="60" placeholder="예: 전자칠판으로 모둠 결과를 실시간 공유" autocomplete="off"></label><button class="fold" id="stAI" hidden>AI 초안</button></div>
@@ -526,12 +623,18 @@ body.lite-fx .tag{transition:none}
         <div class="f-row"><label class="fld grow"><span>학급 특징</span><input id="aiKey" maxlength="30" placeholder="질문 많은 4학년, 텃밭 가꾸기" autocomplete="off"></label><button class="fold" id="aiGo">추천 받기</button></div>
         <div class="ai-list" id="aiList"></div>
       </div>
+      <details class="sim-advanced">
+        <summary>위성 추가 설정 <span>핵심 가치·브랜드 색상 (선택)</span></summary>
+        <div class="sim-advanced-body">
+          <div class="opt"><span class="opt-l">핵심 가치 · <b id="typeLabel"></b></span><div class="chips" id="chips"></div></div>
+          <div class="opt"><span class="opt-l">브랜드 색상</span><div class="sw" id="swatches"></div></div>
+        </div>
+      </details>
       <div class="f-row bottom">
-        <div class="opt"><span class="opt-l">핵심 가치 · <b id="typeLabel"></b></span><div class="chips" id="chips"></div></div>
-        <div class="opt"><span class="opt-l">브랜드 색상</span><div class="sw" id="swatches"></div></div>
         <span class="queue" id="queue" hidden></span>
+        <div class="sim-launch-state" id="formStatus" role="status" aria-live="polite">학생 수·학년·주제·방법·교실 유형·브랜드명을 입력해 주세요.</div>
         <button class="fold" id="foldBtn">닫기</button>
-        <button class="launch" id="launchBtn" disabled>발사</button>
+        <button class="launch" id="launchBtn" disabled>🚀 브랜드 발사</button>
       </div>
     </div>
   </div>
@@ -1058,7 +1161,7 @@ function roomFor(b){if(!b||typeof b!=='object')return null;const t=String((b.inf
 function topicOf(b){return Array.isArray(b?.info?.topicTags)?b.info.topicTags:[]}
 function methodOf(b){return Array.isArray(b?.info?.methodTags)?b.info.methodTags:[]}
 function roomKeyOf(b){const r=roomFor(b);return r?r.key:''}
-function activeColorOf(b){return roomFor(b)?.color||(b&&b.color)||COLORS[0]}
+function activeColorOf(b){return b?.customColor&&b.color?b.color:(roomFor(b)?.color||(b&&b.color)||COLORS[0])}
 function classifyOptions(v,opts){const input=Array.isArray(v)?v.join(' · '):String(v||'');
  return opts.filter(o=>new RegExp(o.replace(/\s/g,'\\s*')).test(input)||(o==='인공지능'&&/(?:인공\s*지능|AI\s*(?:이해|활용|교육)|\bAI\b)/i.test(input))||(o==='열린 주제'&&/열린\s*주제/.test(input)))}
 
@@ -1409,17 +1512,56 @@ const input=$('nameInput'),orgIn=$('orgInput'),sloIn=$('sloganInput'),btn=$('lau
 const statusEl=$('status'),sName=$('sName'),sStage=$('sStage'),cdEl=$('countdown'),toastEl=$('toast'),fadeEl=$('fade');
 const tG=$('tG'),tFF=$('tFF'),tGBox=$('tGBox'),tFFBox=$('tFFBox');
 const telem=$('telem'),tClock=$('tClock'),tAlt=$('tAlt'),tSpd=$('tSpd'),tAltBox=$('tAltBox'),tSpdBox=$('tSpdBox');
-let selKind='comm',selColor=0;
+let selKind='comm',selColor=0,manualColorSelected=false;
 const chipsEl=$('chips'),swEl=$('swatches');
+const manualForm={grade:'',room:'',topics:[],methods:[]};
+// Keep manual launches in the same structured format as 2030 simulator posts.
+function selectedManual(){
+ const n=Number($('studentInput').value);
+ return {students:Number.isInteger(n)&&n>=1&&n<=60?String(n):'',grade:manualForm.grade,
+   topics:manualForm.topics.slice(),methods:manualForm.methods.slice(),room:manualForm.room,
+   name:input.value.trim()};
+}
+function paintManualChoices(){
+ document.querySelectorAll('#studentChoices button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.count===$('studentInput').value)));
+ document.querySelectorAll('#gradeChoices button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.grade===manualForm.grade)));
+ document.querySelectorAll('#topicChoices button').forEach(b=>b.setAttribute('aria-pressed',String(manualForm.topics.includes(b.dataset.value))));
+ document.querySelectorAll('#methodChoices button').forEach(b=>b.setAttribute('aria-pressed',String(manualForm.methods.includes(b.dataset.value))));
+ document.querySelectorAll('#roomChoices button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.room===manualForm.room)));
+}
+function refreshInput(){
+ const f=selectedManual();const missing=[];
+ if(!f.students)missing.push('학생 수');if(!f.grade)missing.push('학년');if(!f.topics.length)missing.push('주제');
+ if(!f.methods.length)missing.push('방법');if(!f.room)missing.push('교실 유형');if(!f.name)missing.push('교실 브랜드');
+ btn.disabled=!!missing.length;
+ $('formStatus').textContent=missing.length?'남은 항목: '+missing.join(' · '):'입력 완료 · 발사하면 이 정보가 위성에 반영됩니다.';
+ paintManualChoices();
+}
+function toggleMulti(group,value){
+ const list=manualForm[group];const i=list.indexOf(value);
+ if(i>=0)list.splice(i,1);else if(list.length>=2){toast('최대 2개까지 선택할 수 있습니다');return}else list.push(value);
+ refreshInput();
+}
+const TOPIC_ICONS=['🌐','📖','🌱','🗺️','💞','💡'];const METHOD_ICONS=['🔗','🚀','🤖','🔍'];
+TOPIC_OPTIONS.forEach((label,i)=>{const b=document.createElement('button');b.type='button';b.dataset.value=label;b.textContent=TOPIC_ICONS[i]+' '+label;b.setAttribute('aria-pressed','false');b.onclick=()=>toggleMulti('topics',label);$('topicChoices').append(b)});
+METHOD_OPTIONS.forEach((label,i)=>{const b=document.createElement('button');b.type='button';b.dataset.value=label;b.textContent=METHOD_ICONS[i]+' '+label;b.setAttribute('aria-pressed','false');b.onclick=()=>toggleMulti('methods',label);$('methodChoices').append(b)});
+const ROOM_DESCRIPTIONS={basic:'공사 없이 기기·비품',custom:'공간 공사까지',switch:'이미 있는 미래형 교실 전환',sustain:'이미 만든 2030교실 운영'};
+ROOM_TYPES.forEach(t=>{const b=document.createElement('button');b.type='button';b.dataset.room=t.name;b.style.setProperty('--room-color',t.color);
+ b.innerHTML='<span>'+t.name+'</span><small>'+ROOM_DESCRIPTIONS[t.key]+'</small>';b.setAttribute('aria-pressed','false');
+ b.onclick=()=>{manualForm.room=t.name;refreshInput()};$('roomChoices').append(b)});
+[...$('studentChoices').querySelectorAll('button')].forEach(b=>b.onclick=()=>{$('studentInput').value=b.dataset.count;refreshInput()});
+[...$('gradeChoices').querySelectorAll('button')].forEach(b=>b.onclick=()=>{manualForm.grade=b.dataset.grade;refreshInput()});
+$('studentInput').addEventListener('input',refreshInput);
 VALUES.forEach(v=>{const c=document.createElement('button');c.className='chip';c.textContent=v.k;c.dataset.kind=v.kind;c.onclick=()=>{selKind=v.kind;renderPick()};chipsEl.appendChild(c)});
-COLORS.forEach((col,i)=>{const c=document.createElement('button');c.style.background=col;c.setAttribute('aria-label','색상 '+(i+1));c.onclick=()=>{selColor=i;renderPick()};swEl.appendChild(c)});
-function renderPick(){[...chipsEl.children].forEach(c=>c.classList.toggle('on',c.dataset.kind===selKind));[...swEl.children].forEach((c,i)=>c.classList.toggle('on',i===selColor));
+COLORS.forEach((col,i)=>{const c=document.createElement('button');c.style.background=col;c.setAttribute('aria-label','색상 '+(i+1));c.onclick=()=>{selColor=i;manualColorSelected=true;renderPick()};swEl.appendChild(c)});
+function renderPick(){[...chipsEl.children].forEach(c=>c.classList.toggle('on',c.dataset.kind===selKind));[...swEl.children].forEach((c,i)=>c.classList.toggle('on',manualColorSelected&&i===selColor));
   $('typeLabel').textContent=VALUES.find(v=>v.kind===selKind).type}
 renderPick();
-function refreshInput(){btn.disabled=!input.value.trim()}
+refreshInput();
 input.addEventListener('input',refreshInput);
-[input,orgIn,sloIn,$('modelInput')].forEach(el=>el.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();submit()}}));
+[input,orgIn,sloIn,$('modelInput'),$('lessonBrandInput')].forEach(el=>el.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();submit()}}));
 btn.addEventListener('click',submit);
+$('simClose').onclick=()=>closeLauncher();
 const clean=(v,n)=>[...v.trim().replace(/\s+/g,' ')].slice(0,n).join('');
 // The simulator's automatic credit line is not a classroom-brand slogan.
 // Hide this UI-only boilerplate, without removing the JGL post or changing its ID.
@@ -1431,11 +1573,24 @@ function stripSimulatorCredit(value){
   return text;
 }
 
-function submit(){const name=clean(input.value,20);if(!name)return;auResume();
-  if([name,orgIn.value,$('modelInput').value].some(isBad)){toast('사용할 수 없는 단어 포함');return}
-  if(isDup(name,clean(orgIn.value,16))){toast('발사 대기 중인 브랜드');return}
-  const item={name,org:clean(orgIn.value,16),slogan:clean(sloIn.value,30),model:clean($('modelInput').value,30),lesson:clean($('stLesson').value,60),learner:clean($('stLearner').value,60),usecase:clean($('stUse').value,60),kind:selKind,color:COLORS[selColor]};
-  input.value='';orgIn.value='';sloIn.value='';$('modelInput').value='';['stLesson','stLearner','stUse'].forEach(id=>$(id).value='');$('storyBox').hidden=true;updStoryCnt();$('aiBox').hidden=true;$('aiList').textContent='';$('aiKey').value='';selColor=(selColor+1)%COLORS.length;renderPick();refreshInput();input.blur();requestLaunch(item);closeLauncher()}
+function submit(){
+ const f=selectedManual();refreshInput();if(btn.disabled){toast('필수 항목을 모두 입력해 주세요');return}
+ const name=clean(input.value,40);if(!name)return;auResume();
+ if([name,orgIn.value,$('modelInput').value,$('lessonBrandInput').value,sloIn.value].some(isBad)){toast('사용할 수 없는 단어 포함');return}
+ if(isDup(name,clean(orgIn.value,40))){toast('발사 대기 중인 브랜드');return}
+ const slogan=clean(sloIn.value,80),lessonBrand=clean($('lessonBrandInput').value,80);
+ const model=clean($('modelInput').value,80)||[...f.topics,...f.methods].join(' × ');
+ const info={type:f.room,classBrand:name,sloganLine:slogan,brandLine:lessonBrand,
+   students:f.students,grade:f.grade,topicTags:f.topics,methodTags:f.methods,
+   topicSource:'직접 입력',methodSource:'직접 입력',model,values:[VALUES.find(v=>v.kind===selKind).k],extra:[]};
+ const item={name,org:clean(orgIn.value,40),slogan,model,info,customColor:manualColorSelected,
+   lesson:clean($('stLesson').value,60),learner:clean($('stLearner').value,60),usecase:clean($('stUse').value,60),kind:selKind,color:manualColorSelected?COLORS[selColor]:ROOM_TYPES.find(t=>t.name===f.room).color};
+ // Reset only after successfully submitting, so a failed validation preserves the form.
+ [input,orgIn,sloIn,$('lessonBrandInput'),$('modelInput'),$('studentInput'),$('stLesson'),$('stLearner'),$('stUse')].forEach(el=>el.value='');
+ manualForm.grade='';manualForm.room='';manualForm.topics=[];manualForm.methods=[];
+ $('storyBox').hidden=true;updStoryCnt();$('aiBox').hidden=true;$('aiList').textContent='';$('aiKey').value='';
+ manualColorSelected=false;selColor=(selColor+1)%COLORS.length;renderPick();refreshInput();input.blur();requestLaunch(item);closeLauncher();
+}
 function closeLauncher(){$('dock').classList.add('collapsed');const ae=document.activeElement;if(ae&&ae.blur)ae.blur()}
 $('foldBtn').onclick=closeLauncher;
 $('miniBtn').onclick=()=>{auResume();$('dock').classList.remove('collapsed');input.focus()};
@@ -1453,7 +1608,7 @@ const satNo=b=>'2030-'+String(b.no||0).padStart(3,'0');
 function inclOf(b){const P=new THREE.Vector3().fromArray(b.P),D=new THREE.Vector3().fromArray(b.D);const n=new THREE.Vector3().crossVectors(P,D).normalize();
   const N=new THREE.Vector3(0,1,0).applyQuaternion(tilt.quaternion);return Math.acos(clamp(n.dot(N),-1,1))/D2R}
 function fmtDate(t){const d=kstParts(t);if(!d)return '시각 기록 없음';const p=n=>String(n).padStart(2,'0');return d.year+'.'+p(d.month)+'.'+p(d.day)+' '+d.hh+':'+d.mm}
-function gridHTML(b,full){const v=valOf(b);const I=b.info||{};const rows=[['위성 종류',v.type],['교실 유형',roomFor(b)?.name||'미입력'],['대표 수업 브랜드',I.brandLine||'미입력','model'],['수업 주제',topicOf(b).join(' · ')||'미입력','model'],['수업 방법',methodOf(b).join(' · ')||'미입력','model'],['핵심 가치',v.k],['수업 모델',b.model||'—','model'],
+function gridHTML(b,full){const v=valOf(b);const I=b.info||{};const rows=[['위성 종류',v.type],['교실 유형',roomFor(b)?.name||'미입력'],['대표 수업 브랜드',I.brandLine||'미입력','model'],['수업 주제',topicOf(b).join(' · ')||'미입력','model'],['수업 방법',methodOf(b).join(' · ')||'미입력','model'],['대상 학년',I.grade||'미입력'],['학생 수',I.students?I.students+'명':'미입력'],['핵심 가치',v.k],['수업 모델',b.model||'—','model'],
   ['현재 위치',placeOfBrand(b),'loc'],[brandTimeInfo(b).label,fmtDate(brandTimeInfo(b).t)],['발사체','나로호']];
   if(!full)rows.push(['위성 번호',satNo(b)]);
   return rows.map(r=>'<div'+(r[2]==='model'?' class="wide"':'')+'><dt>'+r[0]+'</dt><dd'+(r[2]==='loc'?' data-loc':'')+(r[2]==='model'?' title="'+esc(r[1])+'"':'')+'>'+esc(r[1])+'</dd></div>').join('')}
@@ -1585,7 +1740,7 @@ function insert(a,posW,velW){
   const P=posW.clone().normalize();const D=velW.clone();D.addScaledVector(P,-D.dot(P)).normalize();
   const t=Date.now();const r=posW.length();
   const no=brands.reduce((m,x)=>Math.max(m,x.no||0),0)+1;
-  const it=a.item;const b={id:it.bid||(t.toString(36)+Math.random().toString(36).slice(2,6)),info:it.info,sig:it.sig,name:a.name,org:it.org,slogan:it.slogan,model:it.model||'',lesson:it.lesson||'',learner:it.learner||'',usecase:it.usecase||'',kind:it.kind,color:it.color,no,gold:no%10===0&&!it.test,test:!!it.test,cheers:0,P:P.toArray(),D:D.toArray(),r,w:orbW(r),th0:0,t0:t,at:t,launchedAt:a.ignitedAt||t,orbitedAt:t,postedAt:it.postedAt||null};
+  const it=a.item;const b={id:it.bid||(t.toString(36)+Math.random().toString(36).slice(2,6)),info:it.info,customColor:!!it.customColor,sig:it.sig,name:a.name,org:it.org,slogan:it.slogan,model:it.model||'',lesson:it.lesson||'',learner:it.learner||'',usecase:it.usecase||'',kind:it.kind,color:it.color,no,gold:no%10===0&&!it.test,test:!!it.test,cheers:0,P:P.toArray(),D:D.toArray(),r,w:orbW(r),th0:0,t0:t,at:t,launchedAt:a.ignitedAt||t,orbitedAt:t,postedAt:it.postedAt||null};
   brands.push(b);save();a.sat=addSat(b,false);markNewest();refreshCount();
 }
 function recoverLaunch(){const a=active;if(!a)return;
