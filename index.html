@@ -1312,6 +1312,7 @@ function load(){
   try{const s=localStorage.getItem(STORE);if(s){const a=JSON.parse(s);if(Array.isArray(a))brands=a.filter(b=>b&&typeof b.name==='string'&&Array.isArray(b.P)&&Array.isArray(b.D))}}catch(e){brands=[]}
   if(!brands.length){try{const o=JSON.parse(localStorage.getItem(OLD_STORE)||'[]');if(Array.isArray(o)&&o.length){const t=Date.now();
     brands=o.filter(b=>b&&typeof b.name==='string').map((b,i)=>Object.assign({id:(b.id||('m'+i))+'',name:b.name,th0:Math.random()*6.28,t0:t,at:b.at||t},rndOrbit()));save()}}catch(e){}}
+  for(const b of brands){b.slogan=stripSimulatorCredit(b.slogan)}
 }
 function save(){try{localStorage.setItem(STORE,JSON.stringify(brands))}catch(e){}}
 
@@ -1384,6 +1385,16 @@ input.addEventListener('input',refreshInput);
 [input,orgIn,sloIn,$('modelInput')].forEach(el=>el.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();submit()}}));
 btn.addEventListener('click',submit);
 const clean=(v,n)=>[...v.trim().replace(/\s+/g,' ')].slice(0,n).join('');
+// The simulator's automatic credit line is not a classroom-brand slogan.
+// Hide this UI-only boilerplate, without removing the JGL post or changing its ID.
+function stripSimulatorCredit(value){
+  const text=String(value==null?'':value).trim();
+  const compact=text.replace(/\s+/g,'').replace(/[​-‍﻿]/g,'');
+  if(/^2030시뮬레이터(?:\((?:https?:\/\/)?(?:www\.)?jgl\.kr\/2030\))?로만든체험[.!。]?$/.test(compact))return '';
+  if(/^2030시뮬레이터.*jgl\.kr\/2030.*로만든체험[.!。]?$/.test(compact))return '';
+  return text;
+}
+
 function submit(){const name=clean(input.value,20);if(!name)return;auResume();
   if([name,orgIn.value,$('modelInput').value].some(isBad)){toast('사용할 수 없는 단어 포함');return}
   if(isDup(name,clean(orgIn.value,16))){toast('발사 대기 중인 브랜드');return}
@@ -1750,7 +1761,7 @@ let certOpen=false,certT=0;
 function openCert(b){
   certOpen=true;certB=b;const card=$('certCard');card.style.setProperty('--cc',b.gold?'#B8892B':colorOf(b));$('cKind').textContent=b.gold?'기념 위성 · '+b.no+'번째 궤도 진입 증명서':'궤도 진입 증명서';if(b.gold){sfx.fanfare();confetti()}else sfx.chime();
   $('cNo').textContent='위성 번호 '+satNo(b);$('cPatch').innerHTML=patchSVG(b);$('cName').textContent=b.name;
-  $('cSlogan').textContent=b.slogan||'';$('cSlogan').style.display=b.slogan?'':'none';
+  $('cSlogan').textContent=stripSimulatorCredit(b.slogan);$('cSlogan').style.display=stripSimulatorCredit(b.slogan)?'':'none';
   {const tags=(b.info&&b.info.values||[]).map(v=>'#'+v).join(' ');const ol=[b.org,tags].filter(Boolean).join(' · ');$('cOrg').textContent=ol;$('cOrg').style.display=ol?'':'none'}
   $('cGrid').innerHTML=gridHTML(b,true);
   const bar=$('cBar');bar.classList.remove('run');void bar.offsetWidth;bar.classList.add('run');
@@ -1762,7 +1773,7 @@ $('cert').addEventListener('click',e=>{if(e.target===$('cert'))closeCert()});
 let follow=null,ret=null;
 function openDetail(s,fromTour){closeLauncher();
   const b=s.b;$('dPatch').innerHTML=patchSVG(b);$('dName').textContent=b.name;$('dOrg').textContent=b.org||'';
-  $('dSlogan').textContent=b.slogan||'';renderStory(b);setTab('story');$('dGrid').innerHTML=gridHTML(b,false);$('dTour').hidden=!fromTour;$('cheerN').textContent=b.cheers||0;$('detail').hidden=false;
+  $('dSlogan').textContent=stripSimulatorCredit(b.slogan);renderStory(b);setTab('story');$('dGrid').innerHTML=gridHTML(b,false);$('dTour').hidden=!fromTour;$('cheerN').textContent=b.cheers||0;$('detail').hidden=false;
   for(const x of sats)x.tag.classList.toggle('new',x===s);
   if(follow&&follow.s!==s)setFull(follow.s,false);setFull(s,true);
   follow={s,t:0,from:{pos:cam.position.clone(),tgt:controls.target.clone(),up:cam.up.clone()}};ret=null;
@@ -2052,6 +2063,7 @@ function parsePost(p){
   info.type=info.type||String(field('classroomType','classType','roomType','classroom_type')||'');
   info.classBrand=info.classBrand||String(field('classBrand','classroomBrand','class_brand')||'');
   info.sloganLine=info.sloganLine||String(field('brandMotto','brandSlogan','classroomSlogan')||'');
+  info.sloganLine=stripSimulatorCredit(info.sloganLine);
   info.brandLine=info.brandLine||String(field('lessonBrand','teachingBrand','lesson_brand')||'');
   info.students=info.students||String(field('studentCount','students')||'');
   info.grade=info.grade||String(field('grade','targetGrade')||'');
@@ -2063,11 +2075,11 @@ function parsePost(p){
   info.topicSource=topics?'선택 값':info.topicTags.length?'수업 모델 참고':'미입력';
   info.methodSource=methods?'선택 값':info.methodTags.length?'수업 모델 참고':'미입력';
   info.extra=extra;info.values=info.values||[];
-  return {name:clean(info.classBrand||name,20),slogan:clean(info.sloganLine||slogan,30),info,kind:kindFrom(info.values,raw),text:raw}}
+  return {name:clean(info.classBrand||name,20),slogan:clean(stripSimulatorCredit(info.sloganLine)||stripSimulatorCredit(slogan),30),info,kind:kindFrom(info.values,raw),text:raw}}
 async function fetchBoard(){
   const url=JGL.SB+'/rest/v1/posts?board=eq.'+encodeURIComponent(JGL.BOARD)+'&select=*&order=created_at.asc';
   const r=await fetch(url,{headers:jglHeaders(),cache:'no-store'});if(!r.ok){const msg=await r.text().catch(()=>'');throw new Error('HTTP '+r.status+(msg?' · '+msg.slice(0,180):''))}const rows=await r.json();if(!Array.isArray(rows))throw new Error('형식 오류');return rows}
-function applyInfo(b,pp){b.name=pp.name||b.name;b.slogan=pp.slogan;b.info=pp.info;b.model=pp.info.model||b.model||'';if(pp.info.org)b.org=clean(pp.info.org,16);b.kind=pp.kind}
+function applyInfo(b,pp){b.name=pp.name||b.name;b.slogan=stripSimulatorCredit(pp.slogan);b.info=pp.info;b.model=pp.info.model||b.model||'';if(pp.info.org)b.org=clean(pp.info.org,16);b.kind=pp.kind}
 async function syncBoard(){
    if(SYNC.busy)return;SYNC.busy=true;
    try{
@@ -2266,7 +2278,7 @@ function renderCompare(){const box=$('wComparePanel');box.textContent='';
   const clear=document.createElement('button');clear.textContent='비교 해제';clear.onclick=()=>{WFILTER.compare=[];renderWall()};head.append(title,clear);box.append(head);
   const g=document.createElement('div');g.className='w-compare-grid';
   compare.forEach(b=>{const col=document.createElement('section');col.className='w-compare-col';const h=document.createElement('h4');h.textContent=b.name;col.append(h);
-    const data=[['브랜드 한마디',b.slogan||'미입력'],['대표 수업 브랜드',b.info?.brandLine||'미입력'],['수업 주제',topicOf(b).join(' · ')||'미입력'],['수업 방법',methodOf(b).join(' · ')||'미입력'],['교실 유형',roomFor(b)?.name||'미입력'],['대상 학년',b.info?.grade||'미입력'],['학생 수',b.info?.students||'미입력']];
+    const data=[['브랜드 한마디',stripSimulatorCredit(b.slogan)||'미입력'],['대표 수업 브랜드',b.info?.brandLine||'미입력'],['수업 주제',topicOf(b).join(' · ')||'미입력'],['수업 방법',methodOf(b).join(' · ')||'미입력'],['교실 유형',roomFor(b)?.name||'미입력'],['대상 학년',b.info?.grade||'미입력'],['학생 수',b.info?.students||'미입력']];
     const dl=document.createElement('dl');data.forEach(([label,value])=>{const dt=document.createElement('dt');dt.textContent=label;const dd=document.createElement('dd');dd.textContent=value;dl.append(dt,dd)});col.append(dl);g.append(col)});
   box.append(g);
 }
@@ -2290,7 +2302,7 @@ function renderWall(){
     const patch=document.createElement('div');patch.className='patch';patch.innerHTML=patchSVG(b);
     const inner=document.createElement('div');inner.style.minWidth='0';inner.style.flex='1';
     const title=document.createElement('div');title.className='nm';title.textContent=b.name;
-    const slogan=document.createElement('div');slogan.className='sl';slogan.textContent=b.slogan||'';
+    const slogan=document.createElement('div');slogan.className='sl';slogan.textContent=stripSimulatorCredit(b.slogan);
     const model=document.createElement('div');model.className='sl';model.textContent=b.info?.brandLine?'대표 수업 · '+b.info.brandLine:'';
     const tags=document.createElement('div');tags.className='tags';[roomFor(b)?.name,...topicOf(b),...methodOf(b)].filter(Boolean).slice(0,5).forEach(t=>{const tag=document.createElement('i');tag.textContent=t;tags.append(tag)});
     const meta=document.createElement('div');meta.className='mt';meta.textContent=[satNo(b),b.org,(b.cheers?'응원 '+b.cheers:'')].filter(Boolean).join(' · ');
@@ -2331,10 +2343,11 @@ function certCanvas(b){const W=1400,H=860,c=document.createElement('canvas');c.w
   x.strokeStyle='rgba(255,255,255,.7)';x.lineWidth=4;x.save();x.translate(cx,cy);x.rotate(-0.32);x.beginPath();x.ellipse(0,0,92,30,0,0,6.283);x.stroke();x.restore();
   x.fillStyle='#fff';x.textAlign='center';x.font='800 78px '+ff;x.fillText([...(b.name.replace(/^2030\s*/,'')||b.name)][0]||'',cx,cy-4);x.textAlign='left';
   let fs=84;x.font='800 '+fs+'px '+ff;while(x.measureText(b.name).width>W-430&&fs>40){fs-=4;x.font='800 '+fs+'px '+ff}
-  x.fillStyle='#121722';x.fillText(b.name,360,b.slogan?250:(b.org?270:300));
-  if(b.slogan){let bf=40;x.font='500 '+bf+'px '+ff;while(x.measureText(b.slogan).width>W-430&&bf>24){bf-=2;x.font='500 '+bf+'px '+ff}x.fillStyle='#3c4452';x.fillText(b.slogan,362,335)}
+  const printableSlogan=stripSimulatorCredit(b.slogan);
+  x.fillStyle='#121722';x.fillText(b.name,360,printableSlogan?250:(b.org?270:300));
+  if(printableSlogan){let bf=40;x.font='500 '+bf+'px '+ff;while(x.measureText(printableSlogan).width>W-430&&bf>24){bf-=2;x.font='500 '+bf+'px '+ff}x.fillStyle='#3c4452';x.fillText(printableSlogan,362,335)}
   
-  if(b.org){x.font='600 32px '+ff;x.fillStyle='#6A7483';x.fillText(b.org,362,b.slogan?395:345)}
+  if(b.org){x.font='600 32px '+ff;x.fillStyle='#6A7483';x.fillText(b.org,362,printableSlogan?395:345)}
   x.strokeStyle='#E5E8EE';x.lineWidth=2;x.beginPath();x.moveTo(64,490);x.lineTo(W-64,490);x.moveTo(64,740);x.lineTo(W-64,740);x.stroke();
   const v=valOf(b);const cells=[['위성 종류',v.type],['핵심 가치',v.k],['수업 모델',b.model||'—'],['현재 위치',placeOfBrand(b)],[brandTimeInfo(b).label,fmtDate(brandTimeInfo(b).t)],['발사체','나로호']];
   cells.forEach((r,i)=>{const px=64+(i%3)*((W-128)/3),py=545+Math.floor(i/3)*110;x.font='600 28px '+ff;x.fillStyle='#6A7483';x.fillText(r[0],px,py);x.font='700 40px '+ff;x.fillStyle='#121722';x.fillText(r[1],px,py+48)});
@@ -2398,7 +2411,7 @@ function frame(now){
   const fs=active&&active.sat?active.sat.mesh.position:(follow?follow.s.mesh.position:null);
   if(fs){sunLight.position.copy(fs).addScaledVector(SUN,0.3);sunLight.target.position.copy(fs)}
   else{sunLight.position.copy(SUN).multiplyScalar(10);sunLight.target.position.set(0,0,0)}
-  earthU.cloudShift.value=simT*0.0018;
+  earthU.cloudShift.value=0; // Clouds and land rotate together with spin; no exaggerated independent drift.
   updateSats(tnow);
   if(active){if(!active.phase)active.phase='run';try{step(dt)}catch(err){console.error('launch error',err);recoverLaunch()}}else if(follow)updateFollow(dt);else if(ret)updateReturn(dt);else controls.update();
   updateTour(dt);
