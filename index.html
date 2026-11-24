@@ -1018,7 +1018,7 @@ const ROOM_TYPES=[
 ];
 const TOPIC_OPTIONS=['세계시민','인문학','생태전환','지역연계','사회정서','열린 주제'];
 const METHOD_OPTIONS=['연결','확장','인공지능','탐구'];
-function roomFor(b){const t=String((b&&b.info&&b.info.type)||b.roomType||'').replace(/\s/g,'');return ROOM_TYPES.find(o=>t.includes(o.name))||null}
+function roomFor(b){if(!b||typeof b!=='object')return null;const t=String((b.info&&b.info.type)||b.roomType||'').replace(/\s/g,'');return ROOM_TYPES.find(o=>t.includes(o.name))||null}
 function topicOf(b){return Array.isArray(b?.info?.topicTags)?b.info.topicTags:[]}
 function methodOf(b){return Array.isArray(b?.info?.methodTags)?b.info.methodTags:[]}
 function roomKeyOf(b){const r=roomFor(b);return r?r.key:''}
